@@ -510,9 +510,13 @@ impl Player {
             } => {
                 self.set_is_playing(!self.is_playing());
             }
+
             PlayerEvent::KeyDown {
                 key_code: KeyCode::V,
-            } if cfg!(feature = "avm_debug") && self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt) => {
+            } if cfg!(feature = "avm_debug")
+                && self.input.is_key_down(KeyCode::Control)
+                && self.input.is_key_down(KeyCode::Alt) =>
+            {
                 self.mutate_with_update_context(|context| {
                     let mut dumper = VariableDumper::new("  ");
                     let levels = context.levels.clone();
@@ -541,38 +545,38 @@ impl Player {
                     log::info!("Variable dump:\n{}", dumper.output());
                 });
             }
+
             PlayerEvent::KeyDown {
                 key_code: KeyCode::D,
-            } if cfg!(feature = "avm_debug") && self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt) => {
+            } if cfg!(feature = "avm_debug")
+                && self.input.is_key_down(KeyCode::Control)
+                && self.input.is_key_down(KeyCode::Alt) =>
+            {
                 self.mutate_with_update_context(|context| {
                     if context.avm1.show_debug_output() {
-                        log::info!(
-                            "AVM Debugging turned off! Press CTRL+ALT+D to turn off again."
-                        );
+                        log::info!("AVM Debugging turned off! Press CTRL+ALT+D to turn off again.");
                         context.avm1.set_show_debug_output(false);
                         context.avm2.set_show_debug_output(false);
                     } else {
-                        log::info!(
-                            "AVM Debugging turned on! Press CTRL+ALT+D to turn on again."
-                        );
+                        log::info!("AVM Debugging turned on! Press CTRL+ALT+D to turn on again.");
                         context.avm1.set_show_debug_output(true);
                         context.avm2.set_show_debug_output(true);
                     }
                 });
             }
-            _ => {}
-        }
 
-        // Update mouse position from mouse events.
-        if let PlayerEvent::MouseMove { x, y }
-        | PlayerEvent::MouseDown { x, y }
-        | PlayerEvent::MouseUp { x, y } = event
-        {
-            self.mouse_pos =
-                self.inverse_view_matrix * (Twips::from_pixels(x), Twips::from_pixels(y));
-            if self.update_roll_over() {
-                needs_render = true;
+            // Update mouse position from mouse events.
+            PlayerEvent::MouseMove { x, y }
+            | PlayerEvent::MouseDown { x, y }
+            | PlayerEvent::MouseUp { x, y } => {
+                self.mouse_pos =
+                    self.inverse_view_matrix * (Twips::from_pixels(x), Twips::from_pixels(y));
+                if self.update_roll_over() {
+                    needs_render = true;
+                }
             }
+
+            _ => {}
         }
 
         // Propagate button events.
@@ -610,8 +614,8 @@ impl Player {
                 }
             });
         }
-        // Propagte clip events.
 
+        // Propagte clip events.
         self.mutate_with_update_context(|context| {
             let (clip_event, listener) = match event {
                 PlayerEvent::KeyDown { .. } => {
