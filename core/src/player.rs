@@ -504,66 +504,63 @@ impl Player {
     pub fn handle_event(&mut self, event: PlayerEvent) {
         let mut needs_render = self.needs_render;
 
-        if cfg!(feature = "avm_debug") {
-            if let PlayerEvent::KeyDown {
+        match event {
+            PlayerEvent::KeyDown {
+                key_code: KeyCode::Pause,
+            } => {
+                self.set_is_playing(!self.is_playing());
+            }
+            PlayerEvent::KeyDown {
                 key_code: KeyCode::V,
-            } = event
-            {
-                if self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt)
-                {
-                    self.mutate_with_update_context(|context| {
-                        let mut dumper = VariableDumper::new("  ");
-                        let levels = context.levels.clone();
+            } if cfg!(feature = "avm_debug") && self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt) => {
+                self.mutate_with_update_context(|context| {
+                    let mut dumper = VariableDumper::new("  ");
+                    let levels = context.levels.clone();
 
-                        let mut activation = Activation::from_stub(
-                            context.reborrow(),
-                            ActivationIdentifier::root("[Variable Dumper]"),
-                        );
+                    let mut activation = Activation::from_stub(
+                        context.reborrow(),
+                        ActivationIdentifier::root("[Variable Dumper]"),
+                    );
 
+                    dumper.print_variables(
+                        "Global Variables:",
+                        "_global",
+                        &activation.context.avm1.global_object_cell(),
+                        &mut activation,
+                    );
+
+                    for (level, display_object) in levels {
+                        let object = display_object.object().coerce_to_object(&mut activation);
                         dumper.print_variables(
-                            "Global Variables:",
-                            "_global",
-                            &activation.context.avm1.global_object_cell(),
+                            &format!("Level #{}:", level),
+                            &format!("_level{}", level),
+                            &object,
                             &mut activation,
                         );
-
-                        for (level, display_object) in levels {
-                            let object = display_object.object().coerce_to_object(&mut activation);
-                            dumper.print_variables(
-                                &format!("Level #{}:", level),
-                                &format!("_level{}", level),
-                                &object,
-                                &mut activation,
-                            );
-                        }
-                        log::info!("Variable dump:\n{}", dumper.output());
-                    });
-                }
+                    }
+                    log::info!("Variable dump:\n{}", dumper.output());
+                });
             }
-
-            if let PlayerEvent::KeyDown {
+            PlayerEvent::KeyDown {
                 key_code: KeyCode::D,
-            } = event
-            {
-                if self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt)
-                {
-                    self.mutate_with_update_context(|context| {
-                        if context.avm1.show_debug_output() {
-                            log::info!(
-                                "AVM Debugging turned off! Press CTRL+ALT+D to turn off again."
-                            );
-                            context.avm1.set_show_debug_output(false);
-                            context.avm2.set_show_debug_output(false);
-                        } else {
-                            log::info!(
-                                "AVM Debugging turned on! Press CTRL+ALT+D to turn on again."
-                            );
-                            context.avm1.set_show_debug_output(true);
-                            context.avm2.set_show_debug_output(true);
-                        }
-                    });
-                }
+            } if cfg!(feature = "avm_debug") && self.input.is_key_down(KeyCode::Control) && self.input.is_key_down(KeyCode::Alt) => {
+                self.mutate_with_update_context(|context| {
+                    if context.avm1.show_debug_output() {
+                        log::info!(
+                            "AVM Debugging turned off! Press CTRL+ALT+D to turn off again."
+                        );
+                        context.avm1.set_show_debug_output(false);
+                        context.avm2.set_show_debug_output(false);
+                    } else {
+                        log::info!(
+                            "AVM Debugging turned on! Press CTRL+ALT+D to turn on again."
+                        );
+                        context.avm1.set_show_debug_output(true);
+                        context.avm2.set_show_debug_output(true);
+                    }
+                });
             }
+            _ => {}
         }
 
         // Update mouse position from mouse events.
