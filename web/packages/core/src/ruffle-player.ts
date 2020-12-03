@@ -42,6 +42,8 @@ interface ContextMenuItem {
      */
     text: string;
 
+    icon: string;
+
     /**
      * The function to call when clicked
      *
@@ -502,17 +504,25 @@ export class RufflePlayer extends HTMLElement {
             if (this.isFullscreen) {
                 items.push({
                     text: "Exit fullscreen",
+                    icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCI+CiAgPHBhdGggZmlsbD0ibm9uZSIgZD0iTS01LTVoMjR2MjRILTV6Ii8+CiAgPHBhdGggZD0iTTAgMTFoM3YzaDJWOUgwem0zLThIMHYyaDVWMEgzem02IDExaDJ2LTNoM1Y5SDl6bTItMTFWMEg5djVoNVYzeiIvPgo8L3N2Zz4K",
                     onClick: this.exitFullscreen.bind(this),
                 });
             } else {
                 items.push({
                     text: "Enter fullscreen",
+                    icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCI+CiAgPHBhdGggZmlsbD0ibm9uZSIgZD0iTS01LTVoMjR2MjRILTV6Ii8+CiAgPHBhdGggZD0iTTIgOUgwdjVoNXYtMkgyek0wIDVoMlYyaDNWMEgwem0xMiA3SDl2Mmg1VjloLTJ6TTkgMHYyaDN2M2gyVjB6Ii8+Cjwvc3ZnPgo=",
                     onClick: this.enterFullscreen.bind(this),
                 });
             }
         }
         items.push({
+            text: "Mute",
+            icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMTMuMTU1IiB3aWR0aD0iMTMuNSIgdmlld0JveD0iMCAwIDE4IDE3LjU0Ij4KICA8cGF0aCBmaWxsPSJub25lIiBkPSJNLTMtMy4yM2gyNHYyNEgtM3oiLz4KICA8cGF0aCBkPSJNMCA1Ljc3djZoNGw1IDV2LTE2bC01IDV6bTEzLjUgM2MwLTEuNzctMS4wMi0zLjI5LTIuNS00LjAzdjguMDVjMS40OC0uNzMgMi41LTIuMjUgMi41LTQuMDJ6TTExIDB2Mi4wNmMyLjg5Ljg2IDUgMy41NCA1IDYuNzFzLTIuMTEgNS44NS01IDYuNzF2Mi4wNmM0LjAxLS45MSA3LTQuNDkgNy04Ljc3QzE4IDQuNDkgMTUuMDEuOTEgMTEgMHoiLz4KPC9zdmc+Cg==",
+            onClick() {},
+        })
+        items.push({
             text: `Ruffle %VERSION_NAME%`,
+            icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+CiAgPHBhdGggZmlsbD0ibm9uZSIgZD0iTS0yLTJoMjR2MjRILTJ6Ii8+CiAgPHBhdGggZD0iTTEwIDBDNC40OCAwIDAgNC40OCAwIDEwczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNS41MiAwIDEwIDB6bTEgMTVIOVY5aDJ6bTAtOEg5VjVoMnoiLz4KPC9zdmc+Cg==",
             onClick() {
                 window.open("https://ruffle.rs/", "_blank");
             },
@@ -523,21 +533,45 @@ export class RufflePlayer extends HTMLElement {
     private openRightClickMenu(e: MouseEvent): void {
         e.preventDefault();
 
-        // Clear all `right_click_menu` items.
+        // Clear all `rightClickMenu` items.
         while (this.rightClickMenu.firstChild) {
             this.rightClickMenu.removeChild(this.rightClickMenu.firstChild);
         }
 
-        // Populate `right_click_menu` items.
-        for (const { text, onClick } of this.contextMenuItems()) {
+        const first = document.createElement("li");
+        const ul = document.createElement("ul");
+        for (const { icon, onClick } of this.contextMenuItems()) {
             const element = document.createElement("li");
+            const image = document.createElement("img");
+            image.src = icon;
+            element.appendChild(image);
             element.className = "menu_item active";
-            element.textContent = text;
             element.addEventListener("click", onClick);
-            this.rightClickMenu.appendChild(element);
+            ul.appendChild(element);
         }
+        first.appendChild(ul);
+        this.rightClickMenu.appendChild(first);
 
-        // Place `right_click_menu` in the top-left corner, so
+        // Populate `rightClickMenu` items.
+        // for (const { text, onClick } of this.contextMenuItems()) {
+        //     const element = document.createElement("li");
+        //     element.className = "menu_item active";
+        //     element.textContent = text;
+        //     element.addEventListener("click", onClick);
+        //     this.rightClickMenu.appendChild(element);
+        // }
+
+        const element = document.createElement("li");
+        const image = document.createElement("img");
+        image.src = "https://ruffle.rs/assets/logo.png";
+        element.appendChild(image);
+        element.className = "menu_item active";
+        element.addEventListener("click", () => {
+            window.open("https://ruffle.rs/", "_blank");
+        });
+        this.rightClickMenu.appendChild(element)
+
+        // Place `rightClickMenu` in the top-left corner, so
         // its `clientWidth` and `clientHeight` are not clamped.
         this.rightClickMenu.style.left = "0";
         this.rightClickMenu.style.top = "0";
