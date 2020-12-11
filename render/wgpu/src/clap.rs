@@ -4,6 +4,7 @@ use clap::Clap;
 pub enum GraphicsBackend {
     Default,
     Vulkan,
+    Gl,
     Metal,
     Dx12,
     Dx11,
@@ -14,6 +15,7 @@ impl From<GraphicsBackend> for wgpu::BackendBit {
         match backend {
             GraphicsBackend::Default => wgpu::BackendBit::PRIMARY,
             GraphicsBackend::Vulkan => wgpu::BackendBit::VULKAN,
+            GraphicsBackend::Gl => wgpu::BackendBit::GL,
             GraphicsBackend::Metal => wgpu::BackendBit::METAL,
             GraphicsBackend::Dx12 => wgpu::BackendBit::DX12,
             GraphicsBackend::Dx11 => wgpu::BackendBit::DX11,
