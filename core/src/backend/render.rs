@@ -221,7 +221,7 @@ impl From<BitmapFormat> for Vec<i32> {
                     let red = chunk[0];
                     let green = chunk[1];
                     let blue = chunk[2];
-                    (0xFF << 24) | ((red as i32) << 16) | ((green as i32) << 8) | (blue as i32)
+                    i32::from_be_bytes([0xFF, red, green, blue])
                 })
                 .collect(),
             BitmapFormat::Rgba(x) => x
@@ -231,10 +231,7 @@ impl From<BitmapFormat> for Vec<i32> {
                     let green = chunk[1];
                     let blue = chunk[2];
                     let alpha = chunk[3];
-                    ((alpha as i32) << 24)
-                        | ((red as i32) << 16)
-                        | ((green as i32) << 8)
-                        | (blue as i32)
+                    i32::from_be_bytes([alpha, red, green, blue])
                 })
                 .collect(),
         }
@@ -354,15 +351,11 @@ pub fn decode_jpeg(
 
         if alpha_data.len() == decoded_data.len() / 3 {
             let mut rgba = Vec::with_capacity((decoded_data.len() / 3) * 4);
-            let mut i = 0;
-            let mut a = 0;
-            while i < decoded_data.len() {
-                rgba.push(decoded_data[i]);
-                rgba.push(decoded_data[i + 1]);
-                rgba.push(decoded_data[i + 2]);
-                rgba.push(alpha_data[a]);
-                i += 3;
-                a += 1;
+            for (i, chunk) in decoded_data.chunks_exact(3).enumerate() {
+                rgba.push(chunk[0]);
+                rgba.push(chunk[1]);
+                rgba.push(chunk[2]);
+                rgba.push(alpha_data[i]);
             }
             return Ok(Bitmap {
                 width: metadata.width.into(),
@@ -389,8 +382,8 @@ fn rgb5_component(compressed: u16, shift: u16) -> u8 {
 }
 
 // TODO: Make more general (not just i16) and move to some sort of utils file?
-/// `m` must be a power of two.
 /// Returns the smallest multiple of `m` which is greater than `x`.
+/// `m` must be a power of two.
 #[inline]
 fn round_up(x: i16, m: i16) -> i16 {
     (x + m - 1) & !(m - 1)
@@ -424,11 +417,11 @@ pub fn decode_define_bits_lossless(
             let mut i = 0;
             for _ in 0..swf_tag.height {
                 for _ in 0..swf_tag.width {
-                    let compressed = ((decoded_data[i] as u16) << 8) | decoded_data[i + 1] as u16;
+                    let compressed = u16::from_be_bytes([decoded_data[i], decoded_data[i + 1]]);
                     out_data.push(rgb5_component(compressed, 10));
                     out_data.push(rgb5_component(compressed, 5));
                     out_data.push(rgb5_component(compressed, 0));
-                    out_data.push(0xff);
+                    out_data.push(0xFF);
                     i += 2;
                 }
                 i += (padded_width - swf_tag.width) as usize * 2;
