@@ -411,10 +411,7 @@ pub fn decode_define_bits_lossless(
     // but their multiplication ends up positive.
     let signed_width = swf_tag.width as i16;
     let signed_height = swf_tag.height as i16;
-
     let signed_padded_width = round_up(signed_width, 4);
-    let size = (signed_padded_width as i32 * signed_height as i32) as usize;
-    let padding = (signed_padded_width - signed_width) as usize;
 
     // Swizzle/de-palettize the bitmap.
     let out_data = match (swf_tag.version, swf_tag.format) {
@@ -459,43 +456,16 @@ pub fn decode_define_bits_lossless(
             }
             decoded_data
         }
-        (1, swf::BitmapFormat::ColorMap8) => {
-            let mut i = 0;
+        (1..=2, swf::BitmapFormat::ColorMap8) => {
+            let size = (signed_padded_width as i32 * signed_height as i32) as usize;
+            let padding = (signed_padded_width - signed_width) as usize;
 
-            let mut palette = Vec::with_capacity(swf_tag.num_colors as usize + 1);
-            for _ in 0..=swf_tag.num_colors {
-                palette.push(Color {
-                    r: decoded_data[i + 0],
-                    g: decoded_data[i + 1],
-                    b: decoded_data[i + 2],
-                    a: 255,
-                });
-                i += 3;
-            }
-            let mut out_data = vec![];
-            for _ in 0..swf_tag.height {
-                for _ in 0..swf_tag.width {
-                    let entry = decoded_data[i] as usize;
-                    if entry < palette.len() {
-                        let color = &palette[entry];
-                        out_data.push(color.r);
-                        out_data.push(color.g);
-                        out_data.push(color.b);
-                        out_data.push(color.a);
-                    } else {
-                        out_data.push(0);
-                        out_data.push(0);
-                        out_data.push(0);
-                        out_data.push(255);
-                    }
-                    i += 1;
-                }
-                i += padding;
-            }
-            out_data
-        }
-        (2, swf::BitmapFormat::ColorMap8) => {
-            let mut i = (swf_tag.num_colors as usize + 1) * 4;
+            let has_alpha = swf_tag.version == 2;
+            let palette_length = swf_tag.num_colors as usize + 1;
+            let palette_entry_size = if has_alpha { 4 } else { 3 };
+            let palette_size = palette_length * palette_entry_size;
+
+            let mut i = palette_size;
             let end = i + size;
 
             // `swf_tag.width` is padded to a multiple of 4, but it seems that
@@ -510,18 +480,24 @@ pub fn decode_define_bits_lossless(
                         break 'outer;
                     }
                     let byte = decoded_data[i];
-                    if byte <= swf_tag.num_colors {
-                        let offset = byte as usize * 4;
-                        out_data.push(decoded_data[offset + 0]); // red
-                        out_data.push(decoded_data[offset + 1]); // green
-                        out_data.push(decoded_data[offset + 2]); // blue
-                        out_data.push(decoded_data[offset + 3]); // alpha
+                    let (red, green, blue, alpha) = if byte <= swf_tag.num_colors {
+                        let offset = byte as usize * palette_entry_size;
+                        let red = decoded_data[offset + 0];
+                        let green = decoded_data[offset + 1];
+                        let blue = decoded_data[offset + 2];
+                        let alpha = if has_alpha {
+                            decoded_data[offset + 3]
+                        } else {
+                            0xFF
+                        };
+                        (red, green, blue, alpha)
                     } else {
-                        out_data.push(0);
-                        out_data.push(0);
-                        out_data.push(0);
-                        out_data.push(0);
-                    }
+                        (0, 0, 0, if has_alpha { 0 } else { 0xFF })
+                    };
+                    out_data.push(red);
+                    out_data.push(green);
+                    out_data.push(blue);
+                    out_data.push(alpha);
                     i += 1;
                 }
                 i += padding;
