@@ -413,6 +413,8 @@ pub fn decode_define_bits_lossless(
     let signed_height = swf_tag.height as i16;
     let signed_padded_width = round_up(signed_width, 4);
 
+    let has_alpha = swf_tag.version == 2;
+
     // Swizzle/de-palettize the bitmap.
     let out_data = match (swf_tag.version, swf_tag.format) {
         (1, swf::BitmapFormat::Rgb15) => {
@@ -433,26 +435,13 @@ pub fn decode_define_bits_lossless(
             }
             out_data
         }
-        (1, swf::BitmapFormat::Rgb32) => {
-            let mut i = 0;
-            while i < decoded_data.len() {
-                decoded_data[i] = decoded_data[i + 1];
-                decoded_data[i + 1] = decoded_data[i + 2];
-                decoded_data[i + 2] = decoded_data[i + 3];
-                decoded_data[i + 3] = 0xff;
-                i += 4;
-            }
-            decoded_data
-        }
-        (2, swf::BitmapFormat::Rgb32) => {
-            let mut i = 0;
-            while i < decoded_data.len() {
-                let alpha = decoded_data[i];
-                decoded_data[i] = decoded_data[i + 1];
-                decoded_data[i + 1] = decoded_data[i + 2];
-                decoded_data[i + 2] = decoded_data[i + 3];
-                decoded_data[i + 3] = alpha;
-                i += 4;
+        (1..=2, swf::BitmapFormat::Rgb32) => {
+            for chunk in decoded_data.chunks_exact_mut(4) {
+                let alpha = chunk[0];
+                chunk[0] = chunk[1];
+                chunk[1] = chunk[2];
+                chunk[2] = chunk[3];
+                chunk[3] = if has_alpha { alpha } else { 0xFF };
             }
             decoded_data
         }
@@ -460,7 +449,6 @@ pub fn decode_define_bits_lossless(
             let size = (signed_padded_width as i32 * signed_height as i32) as usize;
             let padding = (signed_padded_width - signed_width) as usize;
 
-            let has_alpha = swf_tag.version == 2;
             let palette_length = swf_tag.num_colors as usize + 1;
             let palette_entry_size = if has_alpha { 4 } else { 3 };
             let palette_size = palette_length * palette_entry_size;
