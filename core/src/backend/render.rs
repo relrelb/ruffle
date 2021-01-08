@@ -388,6 +388,14 @@ fn rgb5_component(compressed: u16, shift: u16) -> u8 {
     ((component * 255 + 15) / 31) as u8
 }
 
+// TODO: Make more general (not just i16) and move to some sort of utils file?
+/// `m` must be a power of two.
+/// Returns the smallest multiple of `m` which is greater than `x`.
+#[inline]
+fn round_up(x: i16, m: i16) -> i16 {
+    (x + m - 1) & !(m - 1)
+}
+
 /// Decodes the bitmap data in DefineBitsLossless tag into RGBA.
 /// DefineBitsLossless is Zlib encoded pixel data (similar to PNG), possibly
 /// palletized.
@@ -396,6 +404,17 @@ pub fn decode_define_bits_lossless(
 ) -> Result<Bitmap, Box<dyn std::error::Error>> {
     // Decompress the image data (DEFLATE compression).
     let mut decoded_data = decompress_zlib(swf_tag.data)?;
+
+    // `swf_tag.width` and `swf_tag.height` can be extremely large, even though
+    // the actual `decoded_data` is much smaller. It seems that Flash Player
+    // treats them as signed 16-bit integers, so they might become negative,
+    // but their multiplication ends up positive.
+    let signed_width = swf_tag.width as i16;
+    let signed_height = swf_tag.height as i16;
+
+    let signed_padded_width = round_up(signed_width, 4);
+    let size = (signed_padded_width as i32 * signed_height as i32) as usize;
+    let padding = (signed_padded_width - signed_width) as usize;
 
     // Swizzle/de-palettize the bitmap.
     let out_data = match (swf_tag.version, swf_tag.format) {
@@ -442,12 +461,11 @@ pub fn decode_define_bits_lossless(
         }
         (1, swf::BitmapFormat::ColorMap8) => {
             let mut i = 0;
-            let padded_width = (swf_tag.width + 0b11) & !0b11;
 
             let mut palette = Vec::with_capacity(swf_tag.num_colors as usize + 1);
             for _ in 0..=swf_tag.num_colors {
                 palette.push(Color {
-                    r: decoded_data[i],
+                    r: decoded_data[i + 0],
                     g: decoded_data[i + 1],
                     b: decoded_data[i + 2],
                     a: 255,
@@ -472,34 +490,32 @@ pub fn decode_define_bits_lossless(
                     }
                     i += 1;
                 }
-                i += (padded_width - swf_tag.width) as usize;
+                i += padding;
             }
             out_data
         }
         (2, swf::BitmapFormat::ColorMap8) => {
-            let mut i = 0;
-            let padded_width = (swf_tag.width + 0b11) & !0b11;
+            let mut i = (swf_tag.num_colors as usize + 1) * 4;
+            let end = i + size;
 
-            let mut palette = Vec::with_capacity(swf_tag.num_colors as usize + 1);
-            for _ in 0..=swf_tag.num_colors {
-                palette.push(Color {
-                    r: decoded_data[i],
-                    g: decoded_data[i + 1],
-                    b: decoded_data[i + 2],
-                    a: decoded_data[i + 3],
-                });
-                i += 4;
-            }
-            let mut out_data = vec![];
-            for _ in 0..swf_tag.height {
+            // `swf_tag.width` is padded to a multiple of 4, but it seems that
+            // Flash Player expects for padding bytes every unsigned `swf_tag.width` bytes.
+            // With a large `swf_tag.width`, padding bytes are never skipped because
+            // the end of `decoded_data` is reached before the first `swf_tag.width` bytes
+            // are read.
+            let mut out_data = Vec::with_capacity(size * 4);
+            'outer: for _ in 0..swf_tag.height {
                 for _ in 0..swf_tag.width {
-                    let entry = decoded_data[i] as usize;
-                    if entry < palette.len() {
-                        let color = &palette[entry];
-                        out_data.push(color.r);
-                        out_data.push(color.g);
-                        out_data.push(color.b);
-                        out_data.push(color.a);
+                    if i >= end {
+                        break 'outer;
+                    }
+                    let byte = decoded_data[i];
+                    if byte <= swf_tag.num_colors {
+                        let offset = byte as usize * 4;
+                        out_data.push(decoded_data[offset + 0]); // red
+                        out_data.push(decoded_data[offset + 1]); // green
+                        out_data.push(decoded_data[offset + 2]); // blue
+                        out_data.push(decoded_data[offset + 3]); // alpha
                     } else {
                         out_data.push(0);
                         out_data.push(0);
@@ -508,22 +524,23 @@ pub fn decode_define_bits_lossless(
                     }
                     i += 1;
                 }
-                i += (padded_width - swf_tag.width) as usize;
+                i += padding;
             }
             out_data
         }
         _ => {
             return Err(format!(
-                "Unexpected DefineBitsLossless{} format: {:?} ",
+                "Unexpected DefineBitsLossless{} format: {:?}",
                 swf_tag.version, swf_tag.format,
             )
             .into());
         }
     };
 
+    // TODO: Use unsigned_abs?
     Ok(Bitmap {
-        width: swf_tag.width.into(),
-        height: swf_tag.height.into(),
+        width: signed_width.abs().min(signed_padded_width.abs()) as u32,
+        height: signed_height.abs() as u32,
         data: BitmapFormat::Rgba(out_data),
     })
 }
