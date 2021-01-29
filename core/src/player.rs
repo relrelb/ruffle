@@ -937,13 +937,16 @@ impl Player {
 
     pub fn run_frame(&mut self) {
         self.update(|update_context| {
-            // TODO: In what order are levels run?
             // NOTE: We have to copy all the layer pointers into a separate list
             // because level updates can create more levels, which we don't
             // want to run frames on
             let levels: Vec<_> = update_context.levels.values().copied().collect();
 
+            // TODO: In what order are levels run?
             for level in levels {
+                for x in level.iter_global_exec_list() {
+                    x.run_frame(update_context);
+                }
                 level.run_frame(update_context);
             }
 
@@ -1205,7 +1208,7 @@ impl Player {
     }
 
     /// Runs the closure `f` with an `UpdateContext`.
-    /// This takes cares of populating the `UpdateContext` struct, avoiding borrow issues.
+    /// This takes care of populating the `UpdateContext` struct, avoiding borrow issues.
     fn mutate_with_update_context<F, R>(&mut self, f: F) -> R
     where
         F: for<'a, 'gc> FnOnce(&mut UpdateContext<'a, 'gc, '_>) -> R,
