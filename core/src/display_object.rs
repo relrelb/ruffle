@@ -193,7 +193,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.level
     }
 
-    fn set_level(&mut self, _context: MutationContext<'gc, '_>, level: u32) {
+    fn set_level(&mut self, level: u32) {
         self.level = level;
     }
 
@@ -201,7 +201,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         self.place_frame
     }
 
-    fn set_place_frame(&mut self, _context: MutationContext<'gc, '_>, frame: u16) {
+    fn set_place_frame(&mut self, frame: u16) {
         self.place_frame = frame;
     }
 
@@ -213,11 +213,11 @@ impl<'gc> DisplayObjectBase<'gc> {
         &self.transform.matrix
     }
 
-    fn matrix_mut(&mut self, _context: MutationContext<'gc, '_>) -> &mut Matrix {
+    fn matrix_mut(&mut self) -> &mut Matrix {
         &mut self.transform.matrix
     }
 
-    fn set_matrix(&mut self, _context: MutationContext<'gc, '_>, matrix: &Matrix) {
+    fn set_matrix(&mut self, matrix: &Matrix) {
         self.transform.matrix = *matrix;
         self.flags -= DisplayObjectFlags::SCALE_ROTATION_CACHED;
     }
@@ -230,11 +230,7 @@ impl<'gc> DisplayObjectBase<'gc> {
         &mut self.transform.color_transform
     }
 
-    fn set_color_transform(
-        &mut self,
-        _context: MutationContext<'gc, '_>,
-        color_transform: &ColorTransform,
-    ) {
+    fn set_color_transform(&mut self, color_transform: &ColorTransform) {
         self.transform.color_transform = *color_transform;
     }
 
@@ -1273,13 +1269,13 @@ macro_rules! impl_display_object_sansbounds {
             self.0.read().$field.level()
         }
         fn set_level(&self, gc_context: gc_arena::MutationContext<'gc, '_>, level: u32) {
-            self.0.write(gc_context).$field.set_level(gc_context, level)
+            self.0.write(gc_context).$field.set_level(level)
         }
         fn place_frame(&self) -> u16 {
             self.0.read().$field.place_frame()
         }
         fn set_place_frame(&self, context: gc_arena::MutationContext<'gc, '_>, frame: u16) {
-            self.0.write(context).$field.set_place_frame(context, frame)
+            self.0.write(context).$field.set_place_frame(frame)
         }
         fn transform(&self) -> std::cell::Ref<crate::transform::Transform> {
             std::cell::Ref::map(self.0.read(), |o| o.$field.transform())
@@ -1291,7 +1287,7 @@ macro_rules! impl_display_object_sansbounds {
             &self,
             context: gc_arena::MutationContext<'gc, '_>,
         ) -> std::cell::RefMut<swf::Matrix> {
-            std::cell::RefMut::map(self.0.write(context), |o| o.$field.matrix_mut(context))
+            std::cell::RefMut::map(self.0.write(context), |o| o.$field.matrix_mut())
         }
         fn color_transform(&self) -> std::cell::Ref<crate::color_transform::ColorTransform> {
             std::cell::Ref::map(self.0.read(), |o| o.$field.color_transform())
@@ -1310,7 +1306,7 @@ macro_rules! impl_display_object_sansbounds {
             self.0
                 .write(context)
                 .$field
-                .set_color_transform(context, color_transform)
+                .set_color_transform(color_transform)
         }
         fn rotation(&self, gc_context: gc_arena::MutationContext<'gc, '_>) -> Degrees {
             self.0.write(gc_context).$field.rotation()
@@ -1513,7 +1509,7 @@ macro_rules! impl_display_object {
             self.0.write(gc_context).$field.set_y(value)
         }
         fn set_matrix(&self, context: gc_arena::MutationContext<'gc, '_>, matrix: &swf::Matrix) {
-            self.0.write(context).$field.set_matrix(context, matrix)
+            self.0.write(context).$field.set_matrix(matrix)
         }
     };
 }
