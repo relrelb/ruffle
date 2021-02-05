@@ -1644,7 +1644,7 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
         point: (Twips, Twips),
     ) -> bool {
         if self.world_bounds().contains(point) {
-            for child in self.iter_execution_list() {
+            for child in self.iter_render_list() {
                 if child.hit_test_shape(context, point) {
                     return true;
                 }
@@ -1729,7 +1729,7 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
         }
 
         if event.propagates() {
-            for child in self.iter_execution_list() {
+            for child in self.iter_render_list() {
                 if child.handle_clip_event(context, event) == ClipEventResult::Handled {
                     return ClipEventResult::Handled;
                 }
@@ -1797,7 +1797,8 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
     }
 
     fn unload(&self, context: &mut UpdateContext<'_, 'gc, '_>) {
-        for child in self.iter_execution_list() {
+        // TODO: fix order?
+        for child in self.iter_render_list() {
             child.unload(context);
         }
 

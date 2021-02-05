@@ -331,7 +331,7 @@ impl<'gc> TDisplayObject<'gc> for Button<'gc> {
         context: &mut UpdateContext<'_, 'gc, '_>,
         point: (Twips, Twips),
     ) -> bool {
-        for child in self.iter_execution_list() {
+        for child in self.iter_render_list() {
             if child.hit_test_shape(context, point) {
                 return true;
             }
@@ -409,7 +409,7 @@ impl<'gc> TDisplayObject<'gc> for Button<'gc> {
         }
 
         if event.propagates() {
-            for child in self.iter_execution_list() {
+            for child in self.iter_render_list() {
                 if child.handle_clip_event(context, event) == ClipEventResult::Handled {
                     return ClipEventResult::Handled;
                 }
