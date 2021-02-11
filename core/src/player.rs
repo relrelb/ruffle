@@ -17,7 +17,8 @@ use crate::backend::{
 };
 use crate::config::Letterbox;
 use crate::context::{ActionQueue, ActionType, RenderContext, UpdateContext};
-use crate::display_object::{EditText, Level, MorphShape, MovieClip};
+use crate::display_object::{EditText, MorphShape, MovieClip};
+use crate::levels::{LevelsData, Level};
 use crate::events::{ButtonKeyCode, ClipEvent, ClipEventResult, KeyCode, PlayerEvent};
 use crate::external::Value as ExternalValue;
 use crate::external::{ExternalInterface, ExternalInterfaceProvider};
@@ -33,7 +34,7 @@ use gc_arena::{make_arena, ArenaParameters, Collect, GcCell};
 use instant::Instant;
 use log::info;
 use rand::{rngs::SmallRng, SeedableRng};
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::convert::TryFrom;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex, Weak};
@@ -59,7 +60,7 @@ struct GcRootData<'gc> {
     /// Each level is a `_root` MovieClip that holds a particular SWF movie, also accessible via
     /// the `_levelN` property.
     /// levels[0] represents the initial SWF file that was loaded.
-    levels: BTreeMap<u32, Level<'gc>>,
+    levels: LevelsData<'gc>,
 
     mouse_hovered_object: Option<DisplayObject<'gc>>, // TODO: Remove GcCell wrapped inside GcCell.
 
@@ -103,7 +104,7 @@ impl<'gc> GcRootData<'gc> {
     fn update_context_params(
         &mut self,
     ) -> (
-        &mut BTreeMap<u32, Level<'gc>>,
+        &mut LevelsData<'gc>,
         &mut Library<'gc>,
         &mut ActionQueue<'gc>,
         &mut Avm1<'gc>,
@@ -273,7 +274,7 @@ impl Player {
                     gc_context,
                     GcRootData {
                         library: Library::empty(gc_context),
-                        levels: BTreeMap::new(),
+                        levels: LevelsData::new(),
                         mouse_hovered_object: None,
                         drag_object: None,
                         avm1: Avm1::new(gc_context, NEWEST_PLAYER_VERSION),
@@ -331,7 +332,7 @@ impl Player {
                 Instantiator::Movie,
                 false,
             );
-            context.levels.insert(0, Level::new(fake_root.into()));
+            context.levels.push(context.gc_context, &mut Level::new(fake_root.into()));
 
             Avm2::load_player_globals(context)
         })?;
@@ -411,7 +412,7 @@ impl Player {
             };
             root.post_instantiation(context, root, flashvars, Instantiator::Movie, false);
             root.set_default_root_name(context);
-            context.levels.insert(0, Level::new(root));
+            context.levels.push(context.gc_context, &mut Level::new(root));
             context.add_to_execution_list(root);
 
             // Load and parse the device font.
@@ -643,11 +644,11 @@ impl Player {
                             &mut activation,
                         );
 
-                        for (depth, level) in levels.iter() {
+                        for level in levels.iter() {
                             let object = level.root().object().coerce_to_object(&mut activation);
                             dumper.print_variables(
-                                &format!("Level #{}:", depth),
-                                &format!("_level{}", depth),
+                                &format!("Level #{}:", level.id()),
+                                &format!("_level{}", level.id()),
                                 &object,
                                 &mut activation,
                             );
@@ -717,7 +718,7 @@ impl Player {
 
         if button_event.is_some() {
             self.mutate_with_update_context(|context| {
-                let levels: Vec<Level<'_>> = context.levels.values().copied().collect();
+                let levels: Vec<Level<'_>> = context.levels.iter().collect();
                 for level in levels {
                     if let Some(button_event) = button_event {
                         let state = level.root().handle_clip_event(context, button_event);
@@ -767,7 +768,7 @@ impl Player {
 
             // Fire clip event on all clips.
             if let Some(clip_event) = clip_event {
-                let levels: Vec<Level<'_>> = context.levels.values().copied().collect();
+                let levels: Vec<Level<'_>> = context.levels.iter().collect();
                 for level in levels {
                     level.root().handle_clip_event(context, clip_event);
                 }
@@ -776,7 +777,7 @@ impl Player {
             // Fire event listener on appropriate object
             if let Some((listener_type, event_name, args)) = listener {
                 context.action_queue.queue_actions(
-                    context.levels.get(&0).expect("root level").root(),
+                    context.levels.level_at(0).expect("root level"),
                     ActionType::NotifyListeners {
                         listener: listener_type,
                         method: event_name,
@@ -866,7 +867,8 @@ impl Player {
             // Check hovered object.
             let mut new_hovered = None;
             // TODO: don't use rev?
-            for level in context.levels.clone().values().rev() {
+            // TODO: change to values
+            for level in context.levels.clone().iter() {
                 if new_hovered.is_none() {
                     new_hovered =
                         level
@@ -920,7 +922,7 @@ impl Player {
         let mut is_action_script_3 = false;
         self.mutate_with_update_context(|context| {
             let mut morph_shapes = fnv::FnvHashMap::default();
-            let root = context.levels.get(&0).expect("root level").root();
+            let root = context.levels.level_at(0).expect("root level");
             root.as_movie_clip()
                 .unwrap()
                 .preload(context, &mut morph_shapes);
@@ -946,13 +948,11 @@ impl Player {
             // NOTE: We have to copy all the layer pointers into a separate list
             // because level updates can create more levels, which we don't
             // want to run frames on.
-            let levels: Vec<_> = update_context.levels.values().copied().collect();
+            let objects: Vec<_> = update_context.levels.exec_iter().collect();
 
             // TODO: In what order are levels run?
-            for level in levels {
-                for object in level.iter() {
-                    object.run_frame(update_context);
-                }
+            for object in objects {
+                object.run_frame(update_context);
             }
 
             update_context.update_sounds();
@@ -986,7 +986,7 @@ impl Player {
                 allow_mask: true,
             };
 
-            for level in root_data.levels.values().copied() {
+            for level in root_data.levels.iter() {
                 level.root().render(&mut render_context);
             }
         });
@@ -1331,8 +1331,8 @@ impl Player {
 
             *current_frame = update_context
                 .levels
-                .get(&0)
-                .and_then(|level| level.root().as_movie_clip())
+                .level_at(0)
+                .and_then(|level| level.as_movie_clip())
                 .map(|clip| clip.current_frame());
 
             // Hovered object may have been updated; copy it back to the GC root.

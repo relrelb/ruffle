@@ -30,6 +30,7 @@ pub mod events;
 pub mod focus_tracker;
 mod font;
 mod html;
+mod levels;
 mod library;
 pub mod loader;
 mod player;
