@@ -264,8 +264,8 @@ impl MorphShapeStatic {
         let shape = swf::Shape {
             version: 4,
             id: 0,
-            shape_bounds: bounds.clone(),
-            edge_bounds: bounds.clone(),
+            shape_bounds: bounds.clone().into(),
+            edge_bounds: bounds.clone().into(),
             has_fill_winding_rule: false,
             has_non_scaling_strokes: false,
             has_scaling_strokes: true,

@@ -235,18 +235,34 @@ fn stretch_bounding_box(
     let radius = stroke_width / 2;
     match *command {
         DrawCommand::MoveTo { x, y } => {
-            bounding_box.encompass((x - radius, y - radius));
-            bounding_box.encompass((x + radius, y + radius));
+            bounding_box.union(&BoundingBox {
+                x_min: x - radius,
+                x_max: x + radius,
+                y_min: y - radius,
+                y_max: y + radius,
+            });
         }
         DrawCommand::LineTo { x, y } => {
-            bounding_box.encompass((x - radius, y - radius));
-            bounding_box.encompass((x + radius, y + radius));
+            bounding_box.union(&BoundingBox {
+                x_min: x - radius,
+                x_max: x + radius,
+                y_min: y - radius,
+                y_max: y + radius,
+            });
         }
         DrawCommand::CurveTo { x1, y1, x2, y2 } => {
-            bounding_box.encompass((x1 - radius, y1 - radius));
-            bounding_box.encompass((x1 + radius, y1 + radius));
-            bounding_box.encompass((x2 - radius, y2 - radius));
-            bounding_box.encompass((x2 + radius, y2 + radius));
+            bounding_box.union(&BoundingBox {
+                x_min: x1 - radius,
+                x_max: x1 + radius,
+                y_min: y1 - radius,
+                y_max: y1 + radius,
+            });
+            bounding_box.union(&BoundingBox {
+                x_min: x2 - radius,
+                x_max: x2 + radius,
+                y_min: y2 - radius,
+                y_max: y2 + radius,
+            });
         }
     }
 }

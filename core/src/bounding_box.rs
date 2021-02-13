@@ -171,3 +171,14 @@ impl From<&Rectangle> for BoundingBox {
         }
     }
 }
+
+impl Into<Rectangle> for BoundingBox {
+    fn into(self) -> Rectangle {
+        Rectangle {
+            x_min: self.x_min,
+            x_max: self.x_max,
+            y_min: self.y_min,
+            y_max: self.y_max,
+        }
+    }
+}
