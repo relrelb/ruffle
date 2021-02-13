@@ -1182,7 +1182,6 @@ impl Player {
                 y_min: Twips::new(0),
                 x_max: Twips::from_pixels(f64::from(self.movie_width)),
                 y_max: Twips::from_pixels(f64::from(self.movie_height)),
-                valid: true,
             }
         } else {
             // No letterbox: full visible stage area
@@ -1193,7 +1192,6 @@ impl Player {
                 y_min: Twips::from_pixels(-margin_height),
                 x_max: Twips::from_pixels(f64::from(self.movie_width) + margin_width),
                 y_max: Twips::from_pixels(f64::from(self.movie_height) + margin_height),
-                valid: true,
             }
         };
     }

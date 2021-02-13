@@ -549,7 +549,6 @@ pub fn start_drag<'gc>(
             std::mem::swap(&mut y_min, &mut y_max);
         }
         BoundingBox {
-            valid: true,
             x_min,
             y_min,
             x_max,

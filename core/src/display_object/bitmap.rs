@@ -93,7 +93,6 @@ impl<'gc> TDisplayObject<'gc> for Bitmap<'gc> {
             y_min: Twips::new(0),
             x_max: Twips::from_pixels(Bitmap::width(*self).into()),
             y_max: Twips::from_pixels(Bitmap::height(*self).into()),
-            valid: true,
         }
     }
 
