@@ -489,40 +489,43 @@ pub trait TDisplayObject<'gc>:
     fn set_depth(&self, gc_context: MutationContext<'gc, '_>, depth: Depth);
 
     /// The untransformed inherent bounding box of this object.
-    /// These bounds do **not** include child DisplayObjects.
-    /// To get the bounds including children, use `bounds`, `local_bounds`, or `world_bounds`.
+    /// These bounds do *not* include child DisplayObjects.
+    /// To get the bounds including children, use `shape_bounds`, `edge_bounds`,
+    /// `local_shape_bounds`, or `world_shape_bounds`.
     ///
-    /// Implementors must override this method.
-    /// Leaf DisplayObjects should return their bounds.
-    /// Composite DisplayObjects that only contain children should return `&Default::default()`
-    fn self_bounds(&self) -> BoundingBox;
+    /// Composite DisplayObjects that only contain children should return `Default::default()`.
+    fn self_bounds(&self, with_stroke: bool) -> BoundingBox;
 
     /// The untransformed bounding box of this object including children.
-    fn bounds(&self) -> BoundingBox {
-        self.bounds_with_transform(&Matrix::default())
+    fn shape_bounds(&self) -> BoundingBox {
+        self.bounds_with_transform(&Matrix::default(), true)
+    }
+
+    fn edge_bounds(&self) -> BoundingBox {
+        self.bounds_with_transform(&Matrix::default(), false)
     }
 
     /// The local bounding box of this object including children, in its parent's coordinate system.
-    fn local_bounds(&self) -> BoundingBox {
-        self.bounds_with_transform(&self.matrix())
+    fn local_shape_bounds(&self) -> BoundingBox {
+        self.bounds_with_transform(&self.matrix(), true)
     }
 
     /// The world bounding box of this object including children, relative to the stage.
-    fn world_bounds(&self) -> BoundingBox {
-        self.bounds_with_transform(&self.local_to_global_matrix())
+    fn world_shape_bounds(&self) -> BoundingBox {
+        self.bounds_with_transform(&self.local_to_global_matrix(), true)
     }
 
     /// Gets the bounds of this object and all children, transformed by a given matrix.
     /// This function recurses down and transforms the AABB each child before adding
     /// it to the bounding box. This gives a tighter AABB then if we simply transformed
     /// the overall AABB.
-    fn bounds_with_transform(&self, matrix: &Matrix) -> BoundingBox {
-        let mut bounds = self.self_bounds().transform(matrix);
+    fn bounds_with_transform(&self, matrix: &Matrix, with_stroke: bool) -> BoundingBox {
+        let mut bounds = self.self_bounds(with_stroke).transform(matrix);
 
         if let Some(ctr) = self.as_container() {
             for child in ctr.iter_execution_list() {
                 let matrix = *matrix * *child.matrix();
-                bounds.union(&child.bounds_with_transform(&matrix));
+                bounds.union(&child.bounds_with_transform(&matrix, with_stroke));
             }
         }
 
@@ -627,7 +630,7 @@ pub trait TDisplayObject<'gc>:
     /// The width is based on the AABB of the object.
     /// Returned by the ActionScript `_width`/`width` properties.
     fn width(&self) -> f64 {
-        let bounds = self.local_bounds();
+        let bounds = self.local_shape_bounds();
         (bounds.x_max.saturating_sub(bounds.x_min)).to_pixels()
     }
 
@@ -636,7 +639,7 @@ pub trait TDisplayObject<'gc>:
     /// Set by the ActionScript `_width`/`width` properties.
     /// This does odd things on rotated clips to match the behavior of Flash.
     fn set_width(&self, gc_context: MutationContext<'gc, '_>, value: f64) {
-        let object_bounds = self.bounds();
+        let object_bounds = self.shape_bounds();
         let object_width = (object_bounds.x_max - object_bounds.x_min).to_pixels();
         let object_height = (object_bounds.y_max - object_bounds.y_min).to_pixels();
         let aspect_ratio = object_height / object_width;
@@ -666,14 +669,14 @@ pub trait TDisplayObject<'gc>:
     /// Gets the pixel height of the AABB containing this display object in local space.
     /// Returned by the ActionScript `_height`/`height` properties.
     fn height(&self) -> f64 {
-        let bounds = self.local_bounds();
+        let bounds = self.local_shape_bounds();
         (bounds.y_max.saturating_sub(bounds.y_min)).to_pixels()
     }
     /// Sets the pixel height of this display object in local space.
     /// Set by the ActionScript `_height`/`height` properties.
     /// This does odd things on rotated clips to match the behavior of Flash.
     fn set_height(&self, gc_context: MutationContext<'gc, '_>, value: f64) {
-        let object_bounds = self.bounds();
+        let object_bounds = self.shape_bounds();
         let object_width = (object_bounds.x_max - object_bounds.x_min).to_pixels();
         let object_height = (object_bounds.y_max - object_bounds.y_min).to_pixels();
         let aspect_ratio = object_width / object_height;
@@ -1034,13 +1037,13 @@ pub trait TDisplayObject<'gc>:
 
     /// Tests if a given stage position point intersects with the world bounds of this object.
     fn hit_test_bounds(&self, pos: (Twips, Twips)) -> bool {
-        self.world_bounds().contains(pos)
+        self.world_shape_bounds().contains(pos)
     }
 
     /// Tests if a given object's world bounds intersects with the world bounds
     /// of this object.
     fn hit_test_object(&self, rhs: DisplayObject<'gc>) -> bool {
-        self.world_bounds().intersects(&rhs.world_bounds())
+        self.world_shape_bounds().intersects(&rhs.world_shape_bounds())
     }
 
     /// Tests if a given stage position point intersects within this object, considering the art.
@@ -1050,7 +1053,7 @@ pub trait TDisplayObject<'gc>:
         pos: (Twips, Twips),
     ) -> bool {
         // Default to using bounding box.
-        self.world_bounds().contains(pos)
+        self.world_shape_bounds().contains(pos)
     }
 
     fn mouse_pick(

@@ -122,7 +122,7 @@ impl<'gc> TDisplayObject<'gc> for Text<'gc> {
         context.transform_stack.pop();
     }
 
-    fn self_bounds(&self) -> BoundingBox {
+    fn self_bounds(&self, _with_stroke: bool) -> BoundingBox {
         self.0.read().static_data.bounds.clone()
     }
 
@@ -131,7 +131,7 @@ impl<'gc> TDisplayObject<'gc> for Text<'gc> {
         context: &mut UpdateContext<'_, 'gc, '_>,
         mut point: (Twips, Twips),
     ) -> bool {
-        if self.world_bounds().contains(point) {
+        if self.world_shape_bounds().contains(point) {
             // Texts using the "Advanced text rendering" always hit test using their bounding box.
             if self.0.read().render_settings.is_advanced() {
                 return true;

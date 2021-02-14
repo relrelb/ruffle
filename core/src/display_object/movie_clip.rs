@@ -1623,12 +1623,12 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
         self.render_children(context);
     }
 
-    fn self_bounds(&self) -> BoundingBox {
-        self.0.read().drawing.self_bounds()
+    fn self_bounds(&self, with_stroke: bool) -> BoundingBox {
+        self.0.read().drawing.self_bounds(with_stroke)
     }
 
     fn hit_test_bounds(&self, point: (Twips, Twips)) -> bool {
-        self.world_bounds().contains(point)
+        self.world_shape_bounds().contains(point)
     }
 
     fn hit_test_shape(
@@ -1636,7 +1636,7 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
         context: &mut UpdateContext<'_, 'gc, '_>,
         point: (Twips, Twips),
     ) -> bool {
-        if self.world_bounds().contains(point) {
+        if self.world_shape_bounds().contains(point) {
             for child in self.iter_execution_list() {
                 if child.hit_test_shape(context, point) {
                     return true;
@@ -1660,7 +1660,7 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
         point: (Twips, Twips),
     ) -> Option<DisplayObject<'gc>> {
         if self.visible() {
-            if self.world_bounds().contains(point) {
+            if self.world_shape_bounds().contains(point) {
                 // This movieclip operates in "button mode" if it has a mouse handler,
                 // either via on(..) or via property mc.onRelease, etc.
                 let is_button_mode = {
@@ -1684,7 +1684,7 @@ impl<'gc> TDisplayObject<'gc> for MovieClip<'gc> {
                 }
             }
 
-            // Maybe we could skip recursing down at all if !world_bounds.contains(point),
+            // Maybe we could skip recursing down at all if !world_shape_bounds.contains(point),
             // but a child button can have an invisible hit area outside the parent's bounds.
             for child in self.iter_render_list().rev() {
                 let result = child.mouse_pick(context, child, point);

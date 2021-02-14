@@ -49,13 +49,14 @@ impl<'gc> TDisplayObject<'gc> for Graphic<'gc> {
         self.0.read().static_data.id
     }
 
-    fn self_bounds(&self) -> BoundingBox {
+    fn self_bounds(&self, _with_stroke: bool) -> BoundingBox {
+        // TODO
         self.0.read().static_data.bounds.clone()
     }
 
-    fn world_bounds(&self) -> BoundingBox {
+    fn world_shape_bounds(&self) -> BoundingBox {
         // TODO: Use dirty flags and cache this.
-        let mut bounds = self.local_bounds();
+        let mut bounds = self.local_shape_bounds();
         let mut node = self.parent();
         while let Some(display_object) = node {
             bounds = bounds.transform(&*display_object.matrix());
@@ -69,7 +70,7 @@ impl<'gc> TDisplayObject<'gc> for Graphic<'gc> {
     }
 
     fn render_self(&self, context: &mut RenderContext) {
-        if !self.world_bounds().intersects(&context.view_bounds) {
+        if !self.world_shape_bounds().intersects(&context.view_bounds) {
             // Off-screen; culled
             return;
         }
@@ -86,7 +87,7 @@ impl<'gc> TDisplayObject<'gc> for Graphic<'gc> {
         point: (Twips, Twips),
     ) -> bool {
         // Transform point to local coordinates and test.
-        if self.world_bounds().contains(point) {
+        if self.world_shape_bounds().contains(point) {
             let local_matrix = self.global_to_local_matrix();
             let point = local_matrix * point;
             let shape = &self.0.read().static_data.shape;

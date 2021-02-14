@@ -68,10 +68,13 @@ impl<'gc> TDisplayObject<'gc> for MorphShape<'gc> {
         }
     }
 
-    fn self_bounds(&self) -> BoundingBox {
-        // TODO: Use the bounds of the current ratio.
+    fn self_bounds(&self, with_stroke: bool) -> BoundingBox {
         if let Some(frame) = self.0.read().static_data.frames.get(&self.ratio()) {
-            frame.bounds.clone()
+            if with_stroke {
+                frame.shape.shape_bounds.clone().into()
+            } else {
+                frame.shape.edge_bounds.clone().into()
+            }
         } else {
             BoundingBox::default()
         }
@@ -82,7 +85,7 @@ impl<'gc> TDisplayObject<'gc> for MorphShape<'gc> {
         _context: &mut UpdateContext<'_, 'gc, '_>,
         point: (Twips, Twips),
     ) -> bool {
-        if self.world_bounds().contains(point) {
+        if self.world_shape_bounds().contains(point) {
             if let Some(frame) = self.0.read().static_data.frames.get(&self.ratio()) {
                 let local_matrix = self.global_to_local_matrix();
                 let point = local_matrix * point;
@@ -108,7 +111,6 @@ unsafe impl<'gc> gc_arena::Collect for MorphShapeData<'gc> {
 struct Frame {
     shape_handle: ShapeHandle,
     shape: swf::Shape,
-    bounds: BoundingBox,
 }
 
 /// Static data shared between all instances of a morph shape.
@@ -276,7 +278,6 @@ impl MorphShapeStatic {
         let frame = Frame {
             shape_handle: context.renderer.register_shape((&shape).into(), library),
             shape,
-            bounds: bounds.into(),
         };
         self.frames.insert(ratio, frame);
     }

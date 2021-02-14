@@ -195,8 +195,12 @@ impl Drawing {
         }
     }
 
-    pub fn self_bounds(&self) -> BoundingBox {
-        self.shape_bounds.clone()
+    pub fn self_bounds(&self, with_stroke: bool) -> BoundingBox {
+        if with_stroke {
+            self.shape_bounds.clone()
+        } else {
+            self.edge_bounds.clone()
+        }
     }
 
     pub fn hit_test(&self, point: (Twips, Twips), local_matrix: &swf::Matrix) -> bool {

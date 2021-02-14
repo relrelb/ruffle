@@ -6,7 +6,7 @@ use crate::avm1::function::{Executable, FunctionObject};
 use crate::avm1::globals::display_object::{self, AVM_DEPTH_BIAS, AVM_MAX_DEPTH};
 use crate::avm1::globals::matrix::gradient_object_to_matrix;
 use crate::avm1::property::Attribute;
-use crate::avm1::{AvmString, Object, ScriptObject, TObject, Value};
+use crate::avm1::{Object, ScriptObject, TObject, Value};
 use crate::avm_error;
 use crate::avm_warn;
 use crate::backend::navigator::NavigationMethod;
@@ -147,8 +147,8 @@ pub fn hit_test<'gc>(
         )?;
         if let Some(other) = other {
             return Ok(other
-                .world_bounds()
-                .intersects(&movie_clip.world_bounds())
+                .world_shape_bounds()
+                .intersects(&movie_clip.world_shape_bounds())
                 .into());
         }
     }
@@ -1078,27 +1078,18 @@ fn local_to_global<'gc>(
     Ok(Value::Undefined)
 }
 
-fn get_bounds<'gc>(
+fn get_bounds_helper<'gc>(
     movie_clip: MovieClip<'gc>,
     activation: &mut Activation<'_, 'gc, '_>,
     args: &[Value<'gc>],
+    bounds: BoundingBox,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let target = match args.get(0) {
-        Some(Value::String(s)) if s.is_empty() => None,
-        Some(Value::Object(o)) if o.as_display_object().is_some() => o.as_display_object(),
-        Some(val) => {
-            let path = val.coerce_to_string(activation)?;
-            activation.resolve_target_display_object(
-                movie_clip.into(),
-                AvmString::new(activation.context.gc_context, path.to_string()).into(),
-                false,
-            )?
-        }
-        None => Some(movie_clip.into()),
+    let target = if let Some(&val) = args.get(0) {
+        activation.resolve_target_display_object(movie_clip.into(), val, false)?
+    } else {
+        Some(movie_clip.into())
     };
-
     if let Some(target) = target {
-        let bounds = movie_clip.bounds();
         let out_bounds = if DisplayObject::ptr_eq(movie_clip.into(), target) {
             // Getting the clips bounds in its own coordinate space; no AABB transform needed.
             bounds
@@ -1127,14 +1118,20 @@ fn get_bounds<'gc>(
     }
 }
 
+fn get_bounds<'gc>(
+    movie_clip: MovieClip<'gc>,
+    activation: &mut Activation<'_, 'gc, '_>,
+    args: &[Value<'gc>],
+) -> Result<Value<'gc>, Error<'gc>> {
+    get_bounds_helper(movie_clip, activation, args, movie_clip.shape_bounds())
+}
+
 fn get_rect<'gc>(
     movie_clip: MovieClip<'gc>,
     activation: &mut Activation<'_, 'gc, '_>,
     args: &[Value<'gc>],
 ) -> Result<Value<'gc>, Error<'gc>> {
-    // TODO: This should get the bounds ignoring strokes. Always equal to or smaller than getBounds.
-    // Just defer to getBounds for now. Will have to store edge_bounds vs. shape_bounds in Graphic.
-    get_bounds(movie_clip, activation, args)
+    get_bounds_helper(movie_clip, activation, args, movie_clip.edge_bounds())
 }
 
 #[allow(unused_must_use)] //can't use errors yet
