@@ -1086,23 +1086,20 @@ impl<'gc> MovieClip<'gc> {
             // Remove previous child from children list,
             // and add new child onto front of the list.
             let prev_child = self.replace_at_depth(context, child, depth);
-            {
-                // Set initial properties for child.
-                child.set_instantiated_by_timeline(context.gc_context, true);
-                child.set_depth(context.gc_context, depth);
-                child.set_parent(context.gc_context, Some(self_display_object));
-                child.set_level_id(context.gc_context, self_display_object.level_id());
-                child.set_place_frame(context.gc_context, self.current_frame());
-                if copy_previous_properties {
-                    if let Some(prev_child) = prev_child {
-                        child.copy_display_properties_from(context.gc_context, prev_child);
-                    }
+
+            // Set initial properties for child.
+            child.set_instantiated_by_timeline(context.gc_context, true);
+            child.set_place_frame(context.gc_context, self.current_frame());
+            if copy_previous_properties {
+                if let Some(prev_child) = prev_child {
+                    child.copy_display_properties_from(context.gc_context, prev_child);
                 }
-                // Run first frame.
-                child.apply_place_object(context, self.movie(), place_object);
-                child.post_instantiation(context, child, None, Instantiator::Movie, false);
-                child.run_frame(context);
             }
+
+            // Run first frame.
+            child.apply_place_object(context, self.movie(), place_object);
+            child.post_instantiation(context, child, None, Instantiator::Movie, false);
+            child.run_frame(context);
 
             if let Avm2Value::Object(mut p) = self.object2() {
                 if let Avm2Value::Object(c) = child.object2() {
