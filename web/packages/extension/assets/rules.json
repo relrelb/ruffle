@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": { "type": "redirect", "redirect": { "extensionPath": "/player.html" } },
+        "condition": { "urlFilter": ".swf|", "resourceTypes": ["main_frame"] }
+    }
+]
