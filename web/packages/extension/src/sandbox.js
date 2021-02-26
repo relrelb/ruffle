@@ -24,6 +24,5 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 window.addEventListener("message", (event) => {
-    const swfData = event.data;
-    player.load({ data: swfData, ...config });
+    player.load({ data: event.data, ...config });
 });
