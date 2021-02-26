@@ -23,7 +23,7 @@ window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("main").append(player);
 });
 
-window.addEventListener("message", event => {
-    const swfUrl = event.data;
-    player.load({ url: swfUrl, ...config });
+window.addEventListener("message", (event) => {
+    const swfData = event.data;
+    player.load({ data: swfData, ...config });
 });
