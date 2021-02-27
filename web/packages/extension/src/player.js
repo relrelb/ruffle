@@ -2,8 +2,7 @@ import * as utils from "./utils";
 
 window.addEventListener("DOMContentLoaded", async () => {
     const url = new URL(window.location);
-    const params = url.searchParams;
-    const swfUrl = params.get("url");
+    const swfUrl = url.searchParams.get("url");
     if (!swfUrl) {
         const { lastNavigation } = await utils.storage.local.get(
             "lastNavigation"
@@ -12,7 +11,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             return;
         }
         utils.storage.local.remove("lastNavigation");
-        params.set("url", lastNavigation.url);
+        url.search = `?url=${lastNavigation.url}`;
         document.location = url;
         return;
     }
