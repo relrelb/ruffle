@@ -6,31 +6,24 @@ use ruffle_core::backend::navigator::{
 use ruffle_core::indexmap::IndexMap;
 use ruffle_core::loader::Error;
 use std::borrow::Cow;
-use std::time::Duration;
 use url::Url;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
-use web_sys::{window, Blob, BlobPropertyBag, Performance, Request, RequestInit, Response};
+use web_sys::{window, Blob, BlobPropertyBag, Request, RequestInit, Response};
 
 pub struct WebNavigatorBackend {
-    performance: Performance,
-    start_time: f64,
     allow_script_access: bool,
     upgrade_to_https: bool,
 }
 
 impl WebNavigatorBackend {
     pub fn new(allow_script_access: bool, upgrade_to_https: bool) -> Self {
-        let window = web_sys::window().expect("window()");
-        let performance = window.performance().expect("window.performance()");
-
         // Upgarde to HTTPS takes effect if the current page is hosted on HTTPS.
+        let window = web_sys::window().expect("window()");
         let upgrade_to_https =
             upgrade_to_https && window.location().protocol().unwrap_or_default() == "https:";
 
         WebNavigatorBackend {
-            start_time: performance.now(),
-            performance,
             allow_script_access,
             upgrade_to_https,
         }
@@ -147,11 +140,6 @@ impl NavigatorBackend for WebNavigatorBackend {
                 }
             };
         }
-    }
-
-    fn time_since_launch(&mut self) -> Duration {
-        let dt = self.performance.now() - self.start_time;
-        Duration::from_millis(dt as u64)
     }
 
     fn fetch(&self, url: &str, options: RequestOptions) -> OwnedFuture<Vec<u8>, Error> {

@@ -1207,7 +1207,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
             *self.context.time_offset += 1;
         }
 
-        let time = self.context.navigator.time_since_launch().as_millis() as u32;
+        let time = self.context.locale.time_since_launch().as_millis() as u32;
         self.context
             .avm1
             .push(time.wrapping_add(*self.context.time_offset));

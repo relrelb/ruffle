@@ -1,6 +1,11 @@
+use std::time::Duration;
 use chrono::{DateTime, FixedOffset, TimeZone, Utc};
 
 pub trait LocaleBackend {
+    /// Get the amount of time since the SWF was launched.
+    /// Used by the `getTimer` ActionScript call.
+    fn time_since_launch(&self) -> Duration;
+
     fn get_current_date_time(&self) -> DateTime<Utc>;
 
     fn get_timezone(&self) -> FixedOffset;
@@ -20,6 +25,10 @@ impl NullLocaleBackend {
 }
 
 impl LocaleBackend for NullLocaleBackend {
+    fn time_since_launch(&self) -> Duration {
+        Duration::from_millis(0)
+    }
+
     fn get_current_date_time(&self) -> DateTime<Utc> {
         self.get_timezone().ymd(2001, 2, 3).and_hms(4, 5, 6).into()
     }
