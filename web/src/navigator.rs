@@ -1,7 +1,7 @@
 //! Navigator backend for web
 use js_sys::{Array, ArrayBuffer, Uint8Array};
 use ruffle_core::backend::navigator::{
-    url_from_relative_url, NavigationMethod, NavigatorBackend, OwnedFuture, RequestOptions,
+    NavigationMethod, NavigatorBackend, OwnedFuture, RequestOptions,
 };
 use ruffle_core::indexmap::IndexMap;
 use ruffle_core::loader::Error;
@@ -13,6 +13,7 @@ use wasm_bindgen_futures::{spawn_local, JsFuture};
 use web_sys::{window, Blob, BlobPropertyBag, Performance, Request, RequestInit, Response};
 
 pub struct WebNavigatorBackend {
+    base_url: Url,
     performance: Performance,
     start_time: f64,
     allow_script_access: bool,
@@ -22,6 +23,10 @@ pub struct WebNavigatorBackend {
 impl WebNavigatorBackend {
     pub fn new(allow_script_access: bool, upgrade_to_https: bool) -> Self {
         let window = web_sys::window().expect("window()");
+
+        let href = window.location().href().expect("href()");
+        let base_url = Url::parse(href).unwrap();
+
         let performance = window.performance().expect("window.performance()");
 
         // Upgarde to HTTPS takes effect if the current page is hosted on HTTPS.
@@ -29,8 +34,9 @@ impl WebNavigatorBackend {
             upgrade_to_https && window.location().protocol().unwrap_or_default() == "https:";
 
         WebNavigatorBackend {
-            start_time: performance.now(),
+            base_url,
             performance,
+            start_time: performance.now(),
             allow_script_access,
             upgrade_to_https,
         }
@@ -227,16 +233,11 @@ impl NavigatorBackend for WebNavigatorBackend {
     }
 
     fn resolve_relative_url<'a>(&mut self, url: &'a str) -> Cow<'a, str> {
-        let window = web_sys::window().expect("window()");
-        let document = window.document().expect("document()");
-
-        if let Ok(Some(base_uri)) = document.base_uri() {
-            if let Ok(new_url) = url_from_relative_url(&base_uri, url) {
-                return new_url.into_string().into();
-            }
+        if let Ok(relative) = self.base_url.join(url) {
+            relative.into_string().into()
+        } else {
+            url.into()
         }
-
-        url.into()
     }
 
     fn pre_process_url(&self, mut url: Url) -> Url {

@@ -54,20 +54,6 @@ pub fn url_from_relative_path<P: AsRef<Path>>(
     Err(ParseError::RelativeUrlWithoutBase)
 }
 
-/// Attempt to convert a relative URL into an absolute URL, using the base URL
-/// if necessary.
-///
-/// If the relative URL is actually absolute, then the base will not be used.
-pub fn url_from_relative_url(base: &str, relative: &str) -> Result<Url, ParseError> {
-    let parsed = Url::parse(relative);
-    if let Err(ParseError::RelativeUrlWithoutBase) = parsed {
-        let base = Url::parse(base)?;
-        return base.join(relative);
-    }
-
-    parsed
-}
-
 /// Enumerates all possible navigation methods.
 #[derive(Copy, Clone)]
 pub enum NavigationMethod {
