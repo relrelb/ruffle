@@ -1,9 +1,9 @@
 //! Navigator backend for web
 
 use crate::custom_event::RuffleEvent;
-use isahc::{config::RedirectPolicy, prelude::*, AsyncReadResponseExt, HttpClient, Request};
+use isahc::{config::RedirectPolicy, prelude::*, AsyncReadResponseExt, HttpClient};
 use ruffle_core::backend::navigator::{
-    NavigationMethod, NavigatorBackend, OwnedFuture, RequestOptions,
+    NavigationMethod, NavigatorBackend, OwnedFuture, Request,
 };
 use ruffle_core::indexmap::IndexMap;
 use ruffle_core::loader::Error;
@@ -111,50 +111,50 @@ impl NavigatorBackend for ExternalNavigatorBackend {
         };
     }
 
-    fn fetch(&self, url: &str, options: RequestOptions) -> OwnedFuture<Vec<u8>, Error> {
+    fn fetch(&self, request: Request) -> OwnedFuture<Vec<u8>, Error> {
         // TODO: honor sandbox type (local-with-filesystem, local-with-network, remote, ...)
-        let full_url = match self.movie_url.clone().join(url) {
+        let full_url = match self.movie_url.join(request.url()) {
             Ok(url) => url,
             Err(e) => {
-                let msg = format!("Invalid URL {}: {}", url, e);
+                let msg = format!("Invalid URL {}: {}", request.url(), e);
                 return Box::pin(async move { Err(Error::FetchError(msg)) });
             }
         };
 
         let processed_url = self.pre_process_url(full_url);
 
-        let client = self.client.clone();
-
         match processed_url.scheme() {
             "file" => Box::pin(async move {
                 fs::read(processed_url.to_file_path().unwrap_or_default())
                     .map_err(Error::NetworkError)
             }),
-            _ => Box::pin(async move {
-                let client = client.ok_or(Error::NetworkUnavailable)?;
-
-                let request = match options.method() {
-                    NavigationMethod::Get => Request::get(processed_url.to_string()),
-                    NavigationMethod::Post => Request::post(processed_url.to_string()),
+            _ => {
+                let client = self.client.clone();
+                let (body_data, _) = request.body().clone().unwrap_or_default();
+                let request = match request.method() {
+                    NavigationMethod::Get => isahc::Request::get(processed_url.to_string()),
+                    NavigationMethod::Post => isahc::Request::post(processed_url.to_string()),
                 };
+                Box::pin(async move {
+                    let client = client.ok_or(Error::NetworkUnavailable)?;
 
-                let (body_data, _) = options.body().clone().unwrap_or_default();
-                let body = request
-                    .body(body_data)
-                    .map_err(|e| Error::FetchError(e.to_string()))?;
+                    let body = request
+                        .body(body_data)
+                        .map_err(|e| Error::FetchError(e.to_string()))?;
 
-                let mut response = client
-                    .send_async(body)
-                    .await
-                    .map_err(|e| Error::FetchError(e.to_string()))?;
+                    let mut response = client
+                        .send_async(body)
+                        .await
+                        .map_err(|e| Error::FetchError(e.to_string()))?;
 
-                let mut buffer = vec![];
-                response
-                    .copy_to(&mut buffer)
-                    .await
-                    .map_err(|e| Error::FetchError(e.to_string()))?;
-                Ok(buffer)
-            }),
+                    let mut buffer = vec![];
+                    response
+                        .copy_to(&mut buffer)
+                        .await
+                        .map_err(|e| Error::FetchError(e.to_string()))?;
+                    Ok(buffer)
+                })
+            },
         }
     }
 

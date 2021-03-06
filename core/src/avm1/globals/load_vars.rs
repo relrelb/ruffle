@@ -6,9 +6,8 @@ use crate::avm1::error::Error;
 use crate::avm1::property::Attribute;
 use crate::avm1::{AvmString, Object, ScriptObject, TObject, Value};
 use crate::avm_warn;
-use crate::backend::navigator::{NavigationMethod, RequestOptions};
+use crate::backend::navigator::{NavigationMethod, Request};
 use gc_arena::MutationContext;
-use std::borrow::Cow;
 
 /// Implements `LoadVars`
 pub fn constructor<'gc>(
@@ -320,15 +319,15 @@ fn spawn_load_var_fetch<'gc>(
     url: &AvmString,
     send_object: Option<(Object<'gc>, NavigationMethod)>,
 ) -> Result<Value<'gc>, Error<'gc>> {
-    let (url, request_options) = if let Some((send_object, method)) = send_object {
+    let request = if let Some((send_object, method)) = send_object {
         // Send properties from `send_object`.
-        activation.object_into_request_options(send_object, Cow::Borrowed(&url), Some(method))
+        activation.object_into_request(send_object, &url, Some(method))
     } else {
         // Not sending any parameters.
-        (Cow::Borrowed(url.as_str()), RequestOptions::get())
+        Request::get(url.as_str())
     };
 
-    let fetch = activation.context.navigator.fetch(&url, request_options);
+    let fetch = activation.context.navigator.fetch(request);
     let process = activation.context.load_manager.load_form_into_load_vars(
         activation.context.player.clone().unwrap(),
         loader_object,

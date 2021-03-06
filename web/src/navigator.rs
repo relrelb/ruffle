@@ -1,7 +1,7 @@
 //! Navigator backend for web
 use js_sys::{Array, ArrayBuffer, Uint8Array};
 use ruffle_core::backend::navigator::{
-    NavigationMethod, NavigatorBackend, OwnedFuture, RequestOptions,
+    NavigationMethod, NavigatorBackend, OwnedFuture, Request,
 };
 use ruffle_core::indexmap::IndexMap;
 use ruffle_core::loader::Error;
@@ -160,8 +160,8 @@ impl NavigatorBackend for WebNavigatorBackend {
         Duration::from_millis(dt as u64)
     }
 
-    fn fetch(&self, url: &str, options: RequestOptions) -> OwnedFuture<Vec<u8>, Error> {
-        let url = if let Ok(parsed_url) = Url::parse(url) {
+    fn fetch(&self, request: Request) -> OwnedFuture<Vec<u8>, Error> {
+        let url = if let Ok(parsed_url) = Url::parse(request.url()) {
             self.pre_process_url(parsed_url).to_string()
         } else {
             url.to_string()
@@ -170,12 +170,12 @@ impl NavigatorBackend for WebNavigatorBackend {
         Box::pin(async move {
             let mut init = RequestInit::new();
 
-            init.method(match options.method() {
+            init.method(match request.method() {
                 NavigationMethod::Get => "GET",
                 NavigationMethod::Post => "POST",
             });
 
-            if let Some((data, mime)) = options.body() {
+            if let Some((data, mime)) = request.body() {
                 let arraydata = ArrayBuffer::new(data.len() as u32);
                 let u8data = Uint8Array::new(&arraydata);
 

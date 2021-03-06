@@ -19,7 +19,6 @@ use crate::shape_utils::DrawCommand;
 use crate::tag_utils::SwfSlice;
 use crate::vminterface::Instantiator;
 use gc_arena::MutationContext;
-use std::borrow::Cow;
 use swf::{
     FillStyle, Gradient, GradientInterpolation, GradientRecord, GradientSpread, LineCapStyle,
     LineJoinStyle, LineStyle, Twips,
@@ -1256,8 +1255,8 @@ fn load_movie<'gc>(
     let url = url_val.coerce_to_string(activation)?;
     let method = args.get(1).cloned().unwrap_or(Value::Undefined);
     let method = NavigationMethod::from_method_str(&method.coerce_to_string(activation)?);
-    let (url, opts) = activation.locals_into_request_options(Cow::Borrowed(&url), method);
-    let fetch = activation.context.navigator.fetch(&url, opts);
+    let request = activation.locals_into_request(&url, method);
+    let fetch = activation.context.navigator.fetch(request);
     let process = activation.context.load_manager.load_movie_into_clip(
         activation.context.player.clone().unwrap(),
         DisplayObject::MovieClip(target),
@@ -1280,8 +1279,8 @@ fn load_variables<'gc>(
     let url = url_val.coerce_to_string(activation)?;
     let method = args.get(1).cloned().unwrap_or(Value::Undefined);
     let method = NavigationMethod::from_method_str(&method.coerce_to_string(activation)?);
-    let (url, opts) = activation.locals_into_request_options(Cow::Borrowed(&url), method);
-    let fetch = activation.context.navigator.fetch(&url, opts);
+    let request = activation.locals_into_request(&url, method);
+    let fetch = activation.context.navigator.fetch(request);
     let target = target.object().coerce_to_object(activation);
     let process = activation.context.load_manager.load_form_into_object(
         activation.context.player.clone().unwrap(),

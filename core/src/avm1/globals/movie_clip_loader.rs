@@ -7,7 +7,7 @@ use crate::avm1::object::script_object::ScriptObject;
 use crate::avm1::object::TObject;
 use crate::avm1::property::Attribute;
 use crate::avm1::{Object, Value};
-use crate::backend::navigator::RequestOptions;
+use crate::backend::navigator::Request;
 use crate::display_object::{DisplayObject, TDisplayObject};
 use gc_arena::MutationContext;
 
@@ -48,7 +48,7 @@ pub fn load_clip<'gc>(
             let fetch = activation
                 .context
                 .navigator
-                .fetch(&url, RequestOptions::get());
+                .fetch(Request::get(&url));
             let process = activation.context.load_manager.load_movie_into_clip(
                 activation.context.player.clone().unwrap(),
                 DisplayObject::MovieClip(movieclip),

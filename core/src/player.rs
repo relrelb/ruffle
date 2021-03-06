@@ -9,7 +9,7 @@ use crate::backend::{
     audio::{AudioBackend, AudioManager},
     locale::LocaleBackend,
     log::LogBackend,
-    navigator::{NavigatorBackend, RequestOptions},
+    navigator::{NavigatorBackend, Request},
     render::RenderBackend,
     storage::StorageBackend,
     ui::{MouseCursor, UiBackend},
@@ -353,14 +353,13 @@ impl Player {
     /// off.
     pub fn fetch_root_movie(&mut self, movie_url: &str, parameters: PropertyMap<String>) {
         self.mutate_with_update_context(|context| {
-            let fetch = context.navigator.fetch(movie_url, RequestOptions::get());
+            let fetch = context.navigator.fetch(Request::get(movie_url));
             let process = context.load_manager.load_root_movie(
                 context.player.clone().unwrap(),
                 fetch,
                 movie_url.to_string(),
                 parameters,
             );
-
             context.navigator.spawn_future(process);
         });
     }

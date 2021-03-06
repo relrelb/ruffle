@@ -7,7 +7,7 @@ use crate::avm1::scope::Scope;
 use crate::avm1::{
     fscommand, globals, scope, skip_actions, start_drag, AvmString, ScriptObject, Value,
 };
-use crate::backend::navigator::{NavigationMethod, RequestOptions};
+use crate::backend::navigator::{NavigationMethod, Request};
 use crate::context::UpdateContext;
 use crate::display_object::{DisplayObject, MovieClip, TDisplayObject, TDisplayObjectContainer};
 use crate::ecma_conversions::f64_to_wrapping_u32;
@@ -1235,7 +1235,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
         if target.starts_with("_level") && target.len() > 6 {
             match target[6..].parse::<u32>() {
                 Ok(level_id) => {
-                    let fetch = self.context.navigator.fetch(&url, RequestOptions::get());
+                    let fetch = self.context.navigator.fetch(Request::get(&url));
                     let level = self.resolve_level(level_id);
 
                     if url.is_empty() {
@@ -1313,11 +1313,11 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
                     .unwrap()
                     .object()
                     .coerce_to_object(self);
-                let (url, opts) = self.locals_into_request_options(
-                    Cow::Borrowed(&url),
+                let request = self.locals_into_request(
+                    &url,
                     NavigationMethod::from_send_vars_method(swf_method),
                 );
-                let fetch = self.context.navigator.fetch(&url, opts);
+                let fetch = self.context.navigator.fetch(request);
                 let process = self.context.load_manager.load_form_into_object(
                     self.context.player.clone().unwrap(),
                     target_obj,
@@ -1330,8 +1330,8 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
             return Ok(FrameControl::Continue);
         } else if is_target_sprite {
             if let Some(clip_target) = clip_target {
-                let (url, opts) = self.locals_into_request_options(
-                    Cow::Borrowed(&url),
+                let request = self.locals_into_request(
+                    &url,
                     NavigationMethod::from_send_vars_method(swf_method),
                 );
 
@@ -1341,7 +1341,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
                         mc.replace_with_movie(self.context.gc_context, None)
                     }
                 } else {
-                    let fetch = self.context.navigator.fetch(&url, opts);
+                    let fetch = self.context.navigator.fetch(request);
                     let process = self.context.load_manager.load_movie_into_clip(
                         self.context.player.clone().unwrap(),
                         clip_target,
@@ -1357,7 +1357,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
             // target of `_level#` indicates a `loadMovieNum` call.
             match window_target[6..].parse::<u32>() {
                 Ok(level_id) => {
-                    let fetch = self.context.navigator.fetch(&url, RequestOptions::get());
+                    let fetch = self.context.navigator.fetch(Request::get(&url));
                     let level = self.resolve_level(level_id);
 
                     let process = self.context.load_manager.load_movie_into_clip(
@@ -2381,12 +2381,12 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
 
     /// Construct request options for a fetch operation that may sends object properties as
     /// form data in the request body or URL.
-    pub fn object_into_request_options<'c>(
+    pub fn object_into_request<'c>(
         &mut self,
         object: Object<'gc>,
-        url: Cow<'c, str>,
+        url: &'c str,
         method: Option<NavigationMethod>,
-    ) -> (Cow<'c, str>, RequestOptions) {
+    ) -> Request<'c> {
         match method {
             Some(method) => {
                 let vars = self.object_into_form_values(object);
@@ -2395,24 +2395,20 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
                     .finish();
 
                 match method {
-                    NavigationMethod::Get if url.find('?').is_none() => (
-                        Cow::Owned(format!("{}?{}", url, qstring)),
-                        RequestOptions::get(),
-                    ),
-                    NavigationMethod::Get => (
-                        Cow::Owned(format!("{}&{}", url, qstring)),
-                        RequestOptions::get(),
-                    ),
-                    NavigationMethod::Post => (
-                        url,
-                        RequestOptions::post(Some((
+                    NavigationMethod::Get if !url.contains('?') =>
+                        Request::get("TODO"),
+                        // Request::get(&format!("{}?{}", url, qstring)),
+                    NavigationMethod::Get =>
+                        Request::get("TODO"),
+                        // Request::get(&format!("{}&{}", url, qstring)),
+                    NavigationMethod::Post =>
+                        Request::post(url, Some((
                             qstring.as_bytes().to_owned(),
                             "application/x-www-form-urlencoded".to_string(),
                         ))),
-                    ),
                 }
             }
-            None => (url, RequestOptions::get()),
+            None => Request::get(url),
         }
     }
 
@@ -2430,14 +2426,14 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
 
     /// Construct request options for a fetch operation that may send locals as
     /// form data in the request body or URL.
-    pub fn locals_into_request_options<'c>(
+    pub fn locals_into_request<'c>(
         &mut self,
-        url: Cow<'c, str>,
+        url: &'c str,
         method: Option<NavigationMethod>,
-    ) -> (Cow<'c, str>, RequestOptions) {
+    ) -> Request<'c> {
         let scope = self.scope_cell();
         let locals = scope.read().locals_cell();
-        self.object_into_request_options(locals, url, method)
+        self.object_into_request(locals, &url, method)
     }
 
     /// Resolves a target value to a display object, relative to a starting display object.

@@ -8,7 +8,7 @@ use crate::avm1::object::xml_object::XmlObject;
 use crate::avm1::property::Attribute;
 use crate::avm1::{AvmString, Object, TObject, Value};
 use crate::avm_warn;
-use crate::backend::navigator::RequestOptions;
+use crate::backend::navigator::Request;
 use crate::xml;
 use crate::xml::{XmlDocument, XmlNode};
 use gc_arena::MutationContext;
@@ -942,7 +942,7 @@ pub fn xml_load<'gc>(
         let fetch = activation
             .context
             .navigator
-            .fetch(&url, RequestOptions::get());
+            .fetch(Request::get(&url));
         let target_clip = activation.target_clip_or_root()?;
         let process = activation.context.load_manager.load_xml_into_node(
             activation.context.player.clone().unwrap(),
