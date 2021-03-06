@@ -353,11 +353,10 @@ impl Player {
     /// off.
     pub fn fetch_root_movie(&mut self, movie_url: &str, parameters: PropertyMap<String>) {
         self.mutate_with_update_context(|context| {
-            let fetch = context.navigator.fetch(Request::get(movie_url));
+            let movie_url = context.navigator.resolve_relative_url(movie_url);
             let process = context.load_manager.load_root_movie(
                 context.player.clone().unwrap(),
-                fetch,
-                movie_url.to_string(),
+                Request::get(&movie_url),
                 parameters,
             );
             context.navigator.spawn_future(process);

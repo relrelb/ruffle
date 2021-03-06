@@ -3,7 +3,7 @@
 use crate::avm1::activation::{Activation, ActivationIdentifier};
 use crate::avm1::{Avm1, AvmString, Object, TObject, Value};
 use crate::avm2::Domain as Avm2Domain;
-use crate::backend::navigator::OwnedFuture;
+use crate::backend::navigator::{OwnedFuture, Request};
 use crate::context::{ActionQueue, ActionType};
 use crate::display_object::{DisplayObject, MorphShape, TDisplayObject};
 use crate::player::{Player, NEWEST_PLAYER_VERSION};
@@ -125,8 +125,7 @@ impl<'gc> LoadManager<'gc> {
     pub fn load_root_movie(
         &mut self,
         player: Weak<Mutex<Player>>,
-        fetch: OwnedFuture<Vec<u8>, Error>,
-        url: String,
+        request: Request,
         parameters: PropertyMap<String>,
     ) -> OwnedFuture<(), Error> {
         let loader = Loader::RootMovie { self_handle: None };
@@ -135,7 +134,7 @@ impl<'gc> LoadManager<'gc> {
         let loader = self.get_loader_mut(handle).unwrap();
         loader.introduce_loader_handle(handle);
 
-        loader.root_movie_loader(player, fetch, url, parameters)
+        loader.root_movie_loader(player, request, parameters)
     }
 
     /// Kick off a movie clip load.
@@ -363,8 +362,7 @@ impl<'gc> Loader<'gc> {
     pub fn root_movie_loader(
         &mut self,
         player: Weak<Mutex<Player>>,
-        fetch: OwnedFuture<Vec<u8>, Error>,
-        mut url: String,
+        request: Request,
         parameters: PropertyMap<String>,
     ) -> OwnedFuture<(), Error> {
         let _handle = match self {
@@ -378,20 +376,18 @@ impl<'gc> Loader<'gc> {
             .upgrade()
             .expect("Could not upgrade weak reference to player");
 
+        let url = request.url().to_owned();
+
+        let fetch = player
+            .lock()
+            .expect("Could not lock player!!")
+            .update(|uc| {
+                uc.navigator.fetch(request)
+            });
+
         Box::pin(async move {
-            player
-                .lock()
-                .expect("Could not lock player!!")
-                .update(|uc| -> Result<(), Error> {
-                    url = uc.navigator.resolve_relative_url(&url).into_owned();
-
-                    Ok(())
-                })?;
-
-            let data = (fetch.await)
-                .and_then(|data| Ok((data.len(), SwfMovie::from_data(&data, Some(url.clone()))?)));
-
-            if let Ok((_length, mut movie)) = data {
+            if let Ok(data) = fetch.await {
+                let mut movie = SwfMovie::from_data(&data, Some(url))?;
                 for (key, value) in parameters.iter() {
                     movie.parameters_mut().insert(key, value.to_owned(), false);
                 }
