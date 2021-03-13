@@ -78,6 +78,20 @@ pub struct WebGlRenderBackend {
 
 const MAX_GRADIENT_COLORS: usize = 15;
 
+fn is_power_of_two(x: u32) -> bool {
+    x & (x - 1) == 0
+}
+
+fn next_highest_power_of_two(mut x: u32) -> u32 {
+    x -= 1;
+    let mut i = 1;
+    while i < 32 {
+        x |= x >> i;
+        i <<= 1;
+    }
+    x + 1
+}
+
 impl WebGlRenderBackend {
     pub fn new(canvas: &HtmlCanvasElement) -> Result<Self, Error> {
         // Create WebGL context.
@@ -695,9 +709,27 @@ impl WebGlRenderBackend {
     }
 
     fn register_bitmap(&mut self, bitmap: Bitmap) -> Result<BitmapInfo, Error> {
-        let (format, data) = match &bitmap.data {
-            BitmapFormat::Rgb(data) => (Gl::RGB, data),
-            BitmapFormat::Rgba(data) => (Gl::RGBA, data),
+        let (format, bytes_per_pixel, data) = match &bitmap.data {
+            BitmapFormat::Rgb(data) => (Gl::RGB, 3, data),
+            BitmapFormat::Rgba(data) => (Gl::RGBA, 4, data),
+        };
+
+        let mut resized_data;
+        let (data, width, height) = if self.gl2.is_none() && (!is_power_of_two(bitmap.width) || !is_power_of_two(bitmap.height)) {
+            let resized_width = next_highest_power_of_two(bitmap.width);
+            let resized_height = next_highest_power_of_two(bitmap.height);
+            resized_data = vec![0; resized_width as usize * resized_height as usize * bytes_per_pixel];
+
+            let line_size = bitmap.width as usize * bytes_per_pixel;
+            for i in 0..bitmap.height as usize {
+                let offset = i * line_size;
+                let resized_offset = i * resized_width as usize * bytes_per_pixel;
+                resized_data[resized_offset..resized_offset + line_size].copy_from_slice(&data[offset..offset + line_size]);
+            }
+
+            (&resized_data, resized_width, resized_height)
+        } else {
+            (data, bitmap.width, bitmap.height)
         };
 
         let texture = self.gl.create_texture().unwrap();
@@ -707,8 +739,8 @@ impl WebGlRenderBackend {
                 Gl::TEXTURE_2D,
                 0,
                 format as i32,
-                bitmap.width as i32,
-                bitmap.height as i32,
+                width as i32,
+                height as i32,
                 0,
                 format,
                 Gl::UNSIGNED_BYTE,
@@ -727,8 +759,6 @@ impl WebGlRenderBackend {
             .tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, Gl::LINEAR as i32);
 
         let handle = BitmapHandle(self.textures.len());
-        let width = bitmap.width;
-        let height = bitmap.height;
         self.bitmap_registry.insert(handle, bitmap);
 
         self.textures.push(Texture {
@@ -1197,8 +1227,7 @@ impl RenderBackend for WebGlRenderBackend {
                         .tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MAG_FILTER, filter);
                     self.gl
                         .tex_parameteri(Gl::TEXTURE_2D, Gl::TEXTURE_MIN_FILTER, filter);
-                    // On WebGL1, you are unable to change the wrapping parameter of non-power-of-2 textures.
-                    let wrap = if self.gl2.is_some() && bitmap.is_repeating {
+                    let wrap = if bitmap.is_repeating {
                         Gl::REPEAT as i32
                     } else {
                         Gl::CLAMP_TO_EDGE as i32
