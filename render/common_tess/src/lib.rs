@@ -251,6 +251,49 @@ impl ShapeTessellator {
                         log::error!("Tessellation failure: {:?}", e);
                         continue;
                     }
+
+                    if let Some(fill_style) = &style.fill_style {
+                        match fill_style {
+                            swf::FillStyle::Color(_) => flush_draw(DrawType::Color, &mut mesh, &mut lyon_mesh),
+                            swf::FillStyle::LinearGradient(gradient) => {
+                                flush_draw(
+                                    DrawType::Gradient(swf_gradient_to_uniforms(
+                                        GradientType::Linear,
+                                        gradient,
+                                        0.0,
+                                    )),
+                                    &mut mesh,
+                                    &mut lyon_mesh,
+                                );
+                            }
+                            swf::FillStyle::RadialGradient(gradient) => {
+                                flush_draw(
+                                    DrawType::Gradient(swf_gradient_to_uniforms(
+                                        GradientType::Radial,
+                                        gradient,
+                                        0.0,
+                                    )),
+                                    &mut mesh,
+                                    &mut lyon_mesh,
+                                );
+                            }
+                            swf::FillStyle::FocalGradient {
+                                gradient,
+                                focal_point,
+                            } => {
+                                flush_draw(
+                                    DrawType::Gradient(swf_gradient_to_uniforms(
+                                        GradientType::Focal,
+                                        gradient,
+                                        *focal_point,
+                                    )),
+                                    &mut mesh,
+                                    &mut lyon_mesh,
+                                );
+                            }
+                            swf::FillStyle::Bitmap { .. } => (),
+                        };
+                    }
                 }
             }
         }
