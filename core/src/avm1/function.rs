@@ -4,7 +4,7 @@ use crate::avm1::activation::Activation;
 use crate::avm1::error::Error;
 use crate::avm1::object::super_object::SuperObject;
 use crate::avm1::property::Attribute;
-use crate::avm1::scope::Scope;
+use crate::avm1::scope::{Scope, ScopeClass};
 use crate::avm1::value::Value;
 use crate::avm1::{Object, ObjectPtr, ScriptObject, TObject};
 use crate::display_object::{DisplayObject, TDisplayObject};
@@ -256,10 +256,6 @@ impl<'gc> Executable<'gc> {
         match self {
             Executable::Native(nf) => nf(activation, this, args),
             Executable::Action(af) => {
-                let child_scope = GcCell::allocate(
-                    activation.context.gc_context,
-                    Scope::new_local_scope(af.scope(), activation.context.gc_context),
-                );
                 let arguments = ScriptObject::array(
                     activation.context.gc_context,
                     Some(activation.context.avm1.prototypes().array),
@@ -331,12 +327,25 @@ impl<'gc> Executable<'gc> {
                 };
 
                 let max_recursion_depth = activation.context.avm1.max_recursion_depth();
-                let base_clip = if effective_ver > 5 {
-                    af.base_clip
+                let (base_clip, parent_scope) = if effective_ver > 5 {
+                    (af.base_clip, af.scope())
                 } else {
-                    this.as_display_object()
-                        .unwrap_or_else(|| activation.base_clip())
+                    let base_clip = this.as_display_object().unwrap_or_else(|| activation.base_clip());
+                    let base_clip_obj = match base_clip.object() {
+                        Value::Object(o) => o,
+                        _ => panic!("No script object for display object"),
+                    };
+                    let parent_scope = GcCell::allocate(
+                        activation.context.gc_context,
+                        Scope::new(None, ScopeClass::Target, base_clip_obj),
+                    );
+                    (base_clip, parent_scope)
                 };
+                let child_scope = GcCell::allocate(
+                    activation.context.gc_context,
+                    Scope::new_local_scope(parent_scope, activation.context.gc_context),
+                );
+
                 let mut frame = Activation::from_action(
                     activation.context.reborrow(),
                     activation.id.function(name, reason, max_recursion_depth)?,
