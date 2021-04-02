@@ -185,9 +185,13 @@ impl<'gc> Scope<'gc> {
     }
 
     /// Construct an arbitrary scope.
-    pub fn new(parent: GcCell<'gc, Self>, class: ScopeClass, with_object: Object<'gc>) -> Self {
+    pub fn new(
+        parent: Option<GcCell<'gc, Self>>,
+        class: ScopeClass,
+        with_object: Object<'gc>,
+    ) -> Self {
         Self {
-            parent: Some(parent),
+            parent,
             class,
             values: with_object,
         }

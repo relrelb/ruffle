@@ -370,7 +370,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
         let child_scope = GcCell::allocate(
             parent_activation.context.gc_context,
             Scope::new(
-                parent_activation.scope_cell(),
+                Some(parent_activation.scope_cell()),
                 scope::ScopeClass::Target,
                 clip_obj,
             ),
@@ -412,7 +412,7 @@ impl<'a, 'gc, 'gc_context> Activation<'a, 'gc, 'gc_context> {
         );
         let child_scope = GcCell::allocate(
             self.context.gc_context,
-            Scope::new(global_scope, scope::ScopeClass::Target, clip_obj),
+            Scope::new(Some(global_scope), scope::ScopeClass::Target, clip_obj),
         );
         let constant_pool = self.context.avm1.constant_pool;
         let mut activation = Activation::from_action(
