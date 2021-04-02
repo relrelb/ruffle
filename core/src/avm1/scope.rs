@@ -32,15 +32,15 @@ pub enum ScopeClass {
 #[derive(Debug, Collect)]
 #[collect(no_drop)]
 pub struct Scope<'gc> {
-    parent: Option<GcCell<'gc, Scope<'gc>>>,
+    parent: Option<GcCell<'gc, Self>>,
     class: ScopeClass,
     values: Object<'gc>,
 }
 
 impl<'gc> Scope<'gc> {
     /// Construct a global scope (one without a parent).
-    pub fn from_global_object(globals: Object<'gc>) -> Scope<'gc> {
-        Scope {
+    pub fn from_global_object(globals: Object<'gc>) -> Self {
+        Self {
             parent: None,
             class: ScopeClass::Global,
             values: globals,
@@ -48,8 +48,8 @@ impl<'gc> Scope<'gc> {
     }
 
     /// Construct a child scope of another scope.
-    pub fn new_local_scope(parent: GcCell<'gc, Self>, mc: MutationContext<'gc, '_>) -> Scope<'gc> {
-        Scope {
+    pub fn new_local_scope(parent: GcCell<'gc, Self>, mc: MutationContext<'gc, '_>) -> Self {
+        Self {
             parent: Some(parent),
             class: ScopeClass::Local,
             values: ScriptObject::object_cell(mc, None),
@@ -176,7 +176,7 @@ impl<'gc> Scope<'gc> {
     ) -> GcCell<'gc, Self> {
         GcCell::allocate(
             mc,
-            Scope {
+            Self {
                 parent: Some(parent_scope),
                 class: ScopeClass::With,
                 values: with_object,
@@ -184,13 +184,9 @@ impl<'gc> Scope<'gc> {
         )
     }
 
-    /// Construct an arbitrary scope
-    pub fn new(
-        parent: GcCell<'gc, Self>,
-        class: ScopeClass,
-        with_object: Object<'gc>,
-    ) -> Scope<'gc> {
-        Scope {
+    /// Construct an arbitrary scope.
+    pub fn new(parent: GcCell<'gc, Self>, class: ScopeClass, with_object: Object<'gc>) -> Self {
+        Self {
             parent: Some(parent),
             class,
             values: with_object,
@@ -208,13 +204,12 @@ impl<'gc> Scope<'gc> {
     }
 
     /// Returns a reference to the current local scope object for mutation.
-    #[allow(dead_code)]
     pub fn locals_mut(&mut self) -> &mut Object<'gc> {
         &mut self.values
     }
 
     /// Returns a reference to the parent scope object.
-    pub fn parent(&self) -> Option<Ref<Scope<'gc>>> {
+    pub fn parent(&self) -> Option<Ref<Self>> {
         match self.parent {
             Some(ref p) => Some(p.read()),
             None => None,
@@ -222,15 +217,14 @@ impl<'gc> Scope<'gc> {
     }
 
     /// Returns a reference to the parent scope object.
-    pub fn parent_cell(&self) -> Option<GcCell<'gc, Scope<'gc>>> {
+    pub fn parent_cell(&self) -> Option<GcCell<'gc, Self>> {
         self.parent
     }
 
-    /// Resolve a particular value in the scope chain and the object which this value would expect as its `this` parameter if called.
+    /// Resolve a particular value in the scope chain and the object which this value would expect
+    /// as its `this` parameter if called.
     ///
-    /// Because scopes are object chains, the same rules for `Object::get`
-    /// still apply here. This function is allowed to yield `None` to indicate
-    /// that the result will be calculated on the AVM stack.
+    /// Because scopes are object chains, the same rules for `Object::get` still apply here.
     pub fn resolve(
         &self,
         name: &str,
@@ -247,7 +241,6 @@ impl<'gc> Scope<'gc> {
             return scope.resolve(name, activation, this);
         }
 
-        //TODO: Should undefined variables halt execution?
         Ok(CallableValue::UnCallable(Value::Undefined))
     }
 
