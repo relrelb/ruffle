@@ -30,7 +30,7 @@ export class SourceAPI {
      * @returns The version of this Ruffle source
      */
     get version(): string {
-        return "%VERSION_NUMBER%";
+        return VERSION_NUMBER;
     }
 
     /**

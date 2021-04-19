@@ -639,7 +639,7 @@ export class RufflePlayer extends HTMLElement {
             }
         }
         items.push({
-            text: `About Ruffle (%VERSION_NAME%)`,
+            text: `About Ruffle ${VERSION_NAME})`,
             onClick() {
                 window.open(RUFFLE_ORIGIN, "_blank");
             },
@@ -898,11 +898,11 @@ export class RufflePlayer extends HTMLElement {
         errorArray.push(`OS: ${window.navigator.platform}\n`);
 
         errorArray.push("\n# Ruffle Info\n");
-        errorArray.push(`Version: %VERSION_NUMBER%\n`);
-        errorArray.push(`Name: %VERSION_NAME%\n`);
-        errorArray.push(`Channel: %VERSION_CHANNEL%\n`);
-        errorArray.push(`Built: %BUILD_DATE%\n`);
-        errorArray.push(`Commit: %COMMIT_HASH%\n`);
+        errorArray.push(`Version: ${VERSION_NUMBER}\n`);
+        errorArray.push(`Name: ${VERSION_NAME}\n`);
+        errorArray.push(`Channel: ${VERSION_CHANNEL}\n`);
+        errorArray.push(`Built: ${BUILD_DATE}\n`);
+        errorArray.push(`Commit: ${COMMIT_HASH}\n`);
 
         const errorText = errorArray.join("");
 
