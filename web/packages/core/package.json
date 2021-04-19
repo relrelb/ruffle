@@ -14,9 +14,12 @@
         "build:wasm-bindgen": "wasm-bindgen ../../../target/wasm32-unknown-unknown/release/ruffle_web.wasm --target web --out-dir ./pkg --out-name ruffle_web",
         "build:wasm-opt": "wasm-opt -o ./pkg/ruffle_web_bg.wasm -O -g ./pkg/ruffle_web_bg.wasm || npm run build:wasm-opt-failed",
         "build:wasm-opt-failed": "echo 'NOTE: Since wasm-opt could not be found (or it failed), the resulting module might not perform that well, but it should still work.' && [[ $GITHUB_ACTIONS != true ]]",
-        "build:ts": "tsc -d && node tools/set_version.js",
+        "build:ts": "webpack && node tools/set_version.js",
         "docs": "typedoc",
         "test": "mocha -r esm -r ts-node/register test/**.ts"
+    },
+    "dependencies": {
+        "@types/source-map": "^0.5.2"
     },
     "devDependencies": {
         "@tsconfig/recommended": "^1.0.1",
@@ -30,11 +33,11 @@
         "esm": "^3.2.25",
         "mocha": "^8.0.1",
         "replace-in-file": "^6.1.0",
+        "ts-loader": "^9.0.0",
         "ts-node": "^9.0.0",
         "typedoc": "^0.20.0",
-        "typescript": "^4.0.5"
-    },
-    "dependencies": {
-        "@types/source-map": "^0.5.2"
+        "typescript": "^4.0.5",
+        "webpack": "^5.34.0",
+        "webpack-cli": "^4.6.0"
     }
 }
