@@ -13,14 +13,17 @@ function getDefines() {
 
     let commitHash = "unknown";
     try {
-        commitHash = child_process.execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
+        commitHash = child_process
+            .execSync("git rev-parse HEAD", { encoding: "utf8" })
+            .trim();
     } catch (_) {
         console.log("Couldn't fetch latest git commit...");
     }
 
-    const versionName = versionChannel === "nightly"
-                      ? `nightly ${buildDate.substring(0, 10)}`
-                      : packageVersion;
+    const versionName =
+        versionChannel === "nightly"
+            ? `nightly ${buildDate.substring(0, 10)}`
+            : packageVersion;
 
     return {
         VERSION_NUMBER: JSON.stringify(packageVersion),
@@ -69,8 +72,6 @@ module.exports = (env, argv) => {
             extensions: [".ts", ".js"],
         },
         devtool: "source-map",
-        plugins: [
-            new DefinePlugin(getDefines()),
-        ],
+        plugins: [new DefinePlugin(getDefines())],
     };
 };

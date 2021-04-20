@@ -25,7 +25,13 @@ module.exports = (env, argv) => {
         plugins: [
             new CopyPlugin({
                 patterns: [
-                    { from: "*.wasm", context: path.resolve(__dirname, "node_modules/ruffle-core/dist/") },
+                    {
+                        from: "*.wasm",
+                        context: path.resolve(
+                            __dirname,
+                            "node_modules/ruffle-core/dist/"
+                        ),
+                    },
                     { from: "LICENSE*" },
                     { from: "README.md" },
                 ],
