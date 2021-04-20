@@ -42,11 +42,15 @@ module.exports = (env, argv) => {
     return {
         mode,
         entry: "./src/index.ts",
+        experiments: {
+            outputModule: true,
+        },
         output: {
             path: path.resolve(__dirname, "dist"),
             filename: "index.js",
             publicPath: "",
             clean: true,
+            library: { type: "module" },
         },
         module: {
             rules: [
@@ -57,7 +61,7 @@ module.exports = (env, argv) => {
                 },
                 {
                     test: /\.wasm$/i,
-                    use: ["file-loader"],
+                    type: "asset/resource",
                 },
             ],
         },

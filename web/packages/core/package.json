@@ -3,11 +3,9 @@
     "version": "0.1.0",
     "description": "Core bindings for Ruffle",
     "license": "(MIT OR Apache-2.0)",
-    "main": "./pkg/index.js",
-    "types": "./pkg/index.d.ts",
-    "files": [
-        "pkg/"
-    ],
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": ["./dist/"],
     "scripts": {
         "build": "npm run build:cargo && npm run build:wasm-bindgen && npm run build:wasm-opt && npm run build:ts",
         "build:cargo": "cargo build --release --target wasm32-unknown-unknown",

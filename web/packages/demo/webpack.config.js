@@ -26,16 +26,13 @@ module.exports = (env, argv) => {
                     test: /\.css$/i,
                     use: ["style-loader", "css-loader"],
                 },
-                {
-                    test: /\.wasm$/i,
-                    use: ["file-loader"],
-                },
             ],
         },
         devtool: "source-map",
         plugins: [
             new CopyPlugin({
                 patterns: [
+                    { from: "*.wasm", context: path.resolve(__dirname, "node_modules/ruffle-core/dist/") },
                     { from: path.resolve(__dirname, "www/index.html") },
                     { from: "LICENSE*" },
                     { from: "README.md" },
