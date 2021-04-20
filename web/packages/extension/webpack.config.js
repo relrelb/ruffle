@@ -26,14 +26,6 @@ module.exports = (env, argv) => {
             publicPath: "",
             clean: true,
         },
-        module: {
-            rules: [
-                {
-                    test: /\.wasm$/i,
-                    use: ["file-loader"],
-                },
-            ],
-        },
         plugins: [
             new CopyPlugin({
                 patterns: [
@@ -75,6 +67,7 @@ module.exports = (env, argv) => {
                             return JSON.stringify(manifest);
                         },
                     },
+                    { from: "*.wasm", context: path.resolve(__dirname, "node_modules/ruffle-core/dist/") },
                     { from: "LICENSE*" },
                     { from: "README.md" },
                 ],

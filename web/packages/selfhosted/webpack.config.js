@@ -21,18 +21,14 @@ module.exports = (env, argv) => {
             chunkFilename: "core.ruffle.[contenthash].js",
             clean: true,
         },
-        module: {
-            rules: [
-                {
-                    test: /\.wasm$/i,
-                    use: ["file-loader"],
-                },
-            ],
-        },
         devtool: "source-map",
         plugins: [
             new CopyPlugin({
-                patterns: [{ from: "LICENSE*" }, { from: "README.md" }],
+                patterns: [
+                    { from: "*.wasm", context: path.resolve(__dirname, "node_modules/ruffle-core/dist/") },
+                    { from: "LICENSE*" },
+                    { from: "README.md" },
+                ],
             }),
         ],
     };
