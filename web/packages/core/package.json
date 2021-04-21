@@ -5,7 +5,9 @@
     "license": "(MIT OR Apache-2.0)",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
-    "files": ["./dist/"],
+    "files": [
+        "./dist/"
+    ],
     "scripts": {
         "build": "npm run build:cargo && npm run build:wasm-bindgen && npm run build:wasm-opt && npm run build:ts",
         "build:cargo": "cargo build --release --target wasm32-unknown-unknown",
@@ -26,9 +28,11 @@
         "@typescript-eslint/eslint-plugin": "^4.7.0",
         "@typescript-eslint/parser": "^4.7.0",
         "chai": "^4.2.0",
+        "css-loader": "^5.2.4",
         "eslint": "^7.13.0",
         "eslint-plugin-jsdoc": "^32.1.0",
         "esm": "^3.2.25",
+        "html-loader": "^2.1.2",
         "mocha": "^8.0.1",
         "ts-loader": "^9.0.0",
         "ts-node": "^9.0.0",

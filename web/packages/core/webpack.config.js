@@ -66,10 +66,23 @@ module.exports = (env, argv) => {
                     test: /\.wasm$/i,
                     type: "asset/resource",
                 },
+                {
+                    test: /\.html/i,
+                    use: "html-loader",
+                },
+                {
+                    test: /\.css$/i,
+                    // loader: "css-loader",
+                    type: "asset/resource",
+                },
+                {
+                    test: /\.svg/i,
+                    type: "asset/inline",
+                },
             ],
         },
         resolve: {
-            extensions: [".ts", ".js"],
+            extensions: [".ts", "..."],
         },
         devtool: "source-map",
         plugins: [new DefinePlugin(getDefines())],

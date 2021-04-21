@@ -39,6 +39,13 @@ module.exports = (env, argv) => {
                             "node_modules/ruffle-core/dist/"
                         ),
                     },
+                    {
+                        from: "*.css",
+                        context: path.resolve(
+                            __dirname,
+                            "node_modules/ruffle-core/dist/"
+                        ),
+                    },
                     { from: path.resolve(__dirname, "www/index.html") },
                     { from: "LICENSE*" },
                     { from: "README.md" },

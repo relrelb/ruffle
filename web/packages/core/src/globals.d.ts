@@ -11,3 +11,8 @@ declare const COMMIT_HASH: string;
 interface Error {
     ruffleIndexError?: number;
 }
+
+declare module "*.html" {
+    const content: string;
+    export default content;
+}
