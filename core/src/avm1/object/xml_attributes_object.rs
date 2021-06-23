@@ -72,7 +72,6 @@ impl<'gc> TObject<'gc> for XmlAttributesObject<'gc> {
         name: &str,
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
-        _this: Object<'gc>,
         _base_proto: Option<Object<'gc>>,
     ) -> Result<(), Error<'gc>> {
         self.node().set_attribute_value(
@@ -82,6 +81,7 @@ impl<'gc> TObject<'gc> for XmlAttributesObject<'gc> {
         );
         Ok(())
     }
+
     fn call(
         &self,
         name: &str,

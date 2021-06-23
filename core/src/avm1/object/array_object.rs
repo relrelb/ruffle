@@ -107,7 +107,6 @@ impl<'gc> TObject<'gc> for ArrayObject<'gc> {
         name: &str,
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
-        this: Object<'gc>,
         base_proto: Option<Object<'gc>>,
     ) -> Result<(), Error<'gc>> {
         if name == "length" {
@@ -120,9 +119,7 @@ impl<'gc> TObject<'gc> for ArrayObject<'gc> {
             }
         }
 
-        self.0
-            .read()
-            .set_local(name, value, activation, this, base_proto)
+        self.0.read().set_local(name, value, activation, base_proto)
     }
 
     fn call(

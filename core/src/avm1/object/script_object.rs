@@ -215,9 +215,10 @@ impl<'gc> TObject<'gc> for ScriptObject<'gc> {
         name: &str,
         mut value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
-        this: Object<'gc>,
         base_proto: Option<Object<'gc>>,
     ) -> Result<(), Error<'gc>> {
+        let this = (*self).into();
+
         let watcher = self
             .0
             .read()

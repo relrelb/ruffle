@@ -127,7 +127,6 @@ pub trait TObject<'gc>: 'gc + Collect + Debug + Into<Object<'gc>> + Clone + Copy
         name: &str,
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
-        this: Object<'gc>,
         base_proto: Option<Object<'gc>>,
     ) -> Result<(), Error<'gc>>;
 
@@ -174,7 +173,7 @@ pub trait TObject<'gc>: 'gc + Collect + Debug + Into<Object<'gc>> + Clone + Copy
             }
         }
 
-        self.set_local(name, value, activation, this, Some(this))
+        self.set_local(name, value, activation, Some(this))
     }
 
     /// Call the underlying object.

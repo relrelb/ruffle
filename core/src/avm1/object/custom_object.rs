@@ -10,10 +10,9 @@ macro_rules! impl_custom_object {
             name: &str,
             value: crate::avm1::Value<'gc>,
             activation: &mut crate::avm1::Activation<'_, 'gc, '_>,
-            this: crate::avm1::Object<'gc>,
             base_proto: Option<crate::avm1::Object<'gc>>,
         ) -> Result<(), crate::avm1::Error<'gc>> {
-            self.0.read().$field.set_local(name, value, activation, this, base_proto)
+            self.0.read().$field.set_local(name, value, activation, base_proto)
         }
     };
 
@@ -23,10 +22,9 @@ macro_rules! impl_custom_object {
             name: &str,
             value: crate::avm1::Value<'gc>,
             activation: &mut crate::avm1::Activation<'_, 'gc, '_>,
-            this: crate::avm1::Object<'gc>,
             _base_proto: Option<crate::avm1::Object<'gc>>,
         ) -> Result<(), crate::avm1::Error<'gc>> {
-            self.0.read().$field.set_local(name, value, activation, this, Some(activation.context.avm1.prototypes.$proto))
+            self.0.read().$field.set_local(name, value, activation, Some(activation.context.avm1.prototypes.$proto))
         }
     };
 

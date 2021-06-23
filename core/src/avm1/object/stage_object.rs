@@ -198,7 +198,6 @@ impl<'gc> TObject<'gc> for StageObject<'gc> {
         name: &str,
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
-        this: Object<'gc>,
         base_proto: Option<Object<'gc>>,
     ) -> Result<(), Error<'gc>> {
         let obj = self.0.read();
@@ -223,16 +222,17 @@ impl<'gc> TObject<'gc> for StageObject<'gc> {
 
         if base.has_own_property(activation, name) {
             // 1) Actual properties on the underlying object
-            base.set_local(name, value, activation, this, base_proto)
+            base.set_local(name, value, activation, base_proto)
         } else if let Some(property) = props.read().get_by_name(name) {
             // 2) Display object properties such as _x, _y
             property.set(activation, display_object, value)?;
             Ok(())
         } else {
             // 3) TODO: Prototype
-            base.set_local(name, value, activation, this, base_proto)
+            base.set_local(name, value, activation, base_proto)
         }
     }
+
     fn call(
         &self,
         name: &str,
@@ -461,6 +461,7 @@ impl<'gc> TObject<'gc> for StageObject<'gc> {
     fn type_of(&self) -> &'static str {
         self.0.read().base.type_of()
     }
+
     fn as_script_object(&self) -> Option<ScriptObject<'gc>> {
         Some(self.0.read().base)
     }
