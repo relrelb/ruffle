@@ -59,22 +59,6 @@ impl<'gc> SuperObject<'gc> {
     fn super_proto(self) -> Value<'gc> {
         self.0.read().base_proto.proto()
     }
-
-    /// Retrieve the constructor associated with the super proto.
-    fn super_constr(
-        self,
-        activation: &mut Activation<'_, 'gc, '_>,
-    ) -> Result<Option<Object<'gc>>, Error<'gc>> {
-        if let Value::Object(super_proto) = self.super_proto() {
-            Ok(Some(
-                super_proto
-                    .get("__constructor__", activation)?
-                    .coerce_to_object(activation),
-            ))
-        } else {
-            Ok(None)
-        }
-    }
 }
 
 impl<'gc> TObject<'gc> for SuperObject<'gc> {
@@ -98,6 +82,7 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         //TODO: What happens if you set `super.__proto__`?
         Ok(())
     }
+
     fn call(
         &self,
         name: &str,
@@ -106,12 +91,12 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         _base_proto: Option<Object<'gc>>,
         args: &[Value<'gc>],
     ) -> Result<Value<'gc>, Error<'gc>> {
-        if let Some(constr) = self.super_constr(activation)? {
-            let super_proto = match self.super_proto() {
-                Value::Object(o) => Some(o),
-                _ => None,
-            };
-            constr.call(name, activation, self.0.read().child, super_proto, args)
+        if let Value::Object(super_proto) = self.super_proto() {
+            let constructor = super_proto
+                .get("__constructor__", activation)?
+                .coerce_to_object(activation);
+            let this = self.0.read().child;
+            constructor.call(name, activation, this, Some(super_proto), args)
         } else {
             Ok(Value::Undefined)
         }
