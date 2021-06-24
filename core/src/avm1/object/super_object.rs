@@ -25,7 +25,7 @@ pub struct SuperObject<'gc>(GcCell<'gc, SuperObjectData<'gc>>);
 #[collect(no_drop)]
 pub struct SuperObjectData<'gc> {
     /// The object present as `this` throughout the superchain.
-    child: Object<'gc>,
+    this: Object<'gc>,
 
     /// The `proto` that the currently-executing method was pulled from.
     base_proto: Object<'gc>,
@@ -49,7 +49,7 @@ impl<'gc> SuperObject<'gc> {
         Self(GcCell::allocate(
             activation.context.gc_context,
             SuperObjectData {
-                child: this,
+                this,
                 base_proto,
             },
         ))
@@ -95,7 +95,7 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
             let constructor = super_proto
                 .get("__constructor__", activation)?
                 .coerce_to_object(activation);
-            let this = self.0.read().child;
+            let this = self.0.read().this;
             constructor.call(name, activation, this, Some(super_proto), args)
         } else {
             Ok(Value::Undefined)
@@ -108,14 +108,14 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         args: &[Value<'gc>],
         activation: &mut Activation<'_, 'gc, '_>,
     ) -> Result<Value<'gc>, Error<'gc>> {
-        let child = self.0.read().child;
-        let (method, base_proto) = search_prototype(self.super_proto(), name, activation, child)?;
+        let this = self.0.read().this;
+        let (method, base_proto) = search_prototype(self.super_proto(), name, activation, this)?;
 
         if method.is_primitive() {
             avm_warn!(activation, "Super method {} is not callable", name);
         }
 
-        method.call(name, activation, child, base_proto, args)
+        method.call(name, activation, this, base_proto, args)
     }
 
     fn call_setter(
@@ -124,7 +124,7 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         value: Value<'gc>,
         activation: &mut Activation<'_, 'gc, '_>,
     ) -> Option<Object<'gc>> {
-        self.0.read().child.call_setter(name, value, activation)
+        self.0.read().this.call_setter(name, value, activation)
     }
 
     fn create_bare_object(
@@ -137,7 +137,7 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         } else {
             // TODO: What happens when you `new super` but there's no
             // super? Is this code even reachable?!
-            self.0.read().child.create_bare_object(activation, this)
+            self.0.read().this.create_bare_object(activation, this)
         }
     }
 
@@ -214,19 +214,19 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
     }
 
     fn has_property(&self, activation: &mut Activation<'_, 'gc, '_>, name: &str) -> bool {
-        self.0.read().child.has_property(activation, name)
+        self.0.read().this.has_property(activation, name)
     }
 
     fn has_own_property(&self, activation: &mut Activation<'_, 'gc, '_>, name: &str) -> bool {
-        self.0.read().child.has_own_property(activation, name)
+        self.0.read().this.has_own_property(activation, name)
     }
 
     fn has_own_virtual(&self, activation: &mut Activation<'_, 'gc, '_>, name: &str) -> bool {
-        self.0.read().child.has_own_virtual(activation, name)
+        self.0.read().this.has_own_virtual(activation, name)
     }
 
     fn is_property_enumerable(&self, activation: &mut Activation<'_, 'gc, '_>, name: &str) -> bool {
-        self.0.read().child.is_property_enumerable(activation, name)
+        self.0.read().this.is_property_enumerable(activation, name)
     }
 
     fn get_keys(&self, _activation: &mut Activation<'_, 'gc, '_>) -> Vec<String> {
@@ -289,7 +289,7 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
 
     fn as_display_object(&self) -> Option<DisplayObject<'gc>> {
         //`super` actually can be used to invoke MovieClip methods
-        self.0.read().child.as_display_object()
+        self.0.read().this.as_display_object()
     }
 
     fn as_executable(&self) -> Option<Executable<'gc>> {
