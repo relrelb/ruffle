@@ -41,18 +41,18 @@ impl<'gc> SuperObject<'gc> {
     /// sometimes called while mutable borrows are held on cells. Specifically,
     /// `Object.call_setter` will panic if this function attempts to borrow
     /// *any* objects.
-    pub fn from_this_and_base_proto(
+    pub fn new(
+        activation: &mut Activation<'_, 'gc, '_>,
         this: Object<'gc>,
         base_proto: Object<'gc>,
-        activation: &mut Activation<'_, 'gc, '_>,
-    ) -> Result<Self, Error<'gc>> {
-        Ok(Self(GcCell::allocate(
+    ) -> Self {
+        Self(GcCell::allocate(
             activation.context.gc_context,
             SuperObjectData {
                 child: this,
                 base_proto,
             },
-        )))
+        ))
     }
 
     /// Retrieve the prototype that `super` should be pulling from.
