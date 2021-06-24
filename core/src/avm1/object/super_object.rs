@@ -27,48 +27,52 @@ pub struct SuperObjectData<'gc> {
     /// The object present as `this` throughout the superchain.
     this: Object<'gc>,
 
-    /// The `proto` that the currently-executing method was pulled from.
-    base_proto: Object<'gc>,
+    depth: u8,
 }
 
 impl<'gc> SuperObject<'gc> {
     /// Construct a `super` for an incoming stack frame.
     ///
-    /// `this` and `base_proto` must be the values provided to
-    /// `Executable.exec`.
+    /// `this` and `depth` must be the values provided to `Executable.exec`.
     ///
     /// NOTE: This function must not borrow any `GcCell` data as it is
     /// sometimes called while mutable borrows are held on cells. Specifically,
     /// `Object.call_setter` will panic if this function attempts to borrow
     /// *any* objects.
-    pub fn new(
-        activation: &mut Activation<'_, 'gc, '_>,
-        this: Object<'gc>,
-        base_proto: Object<'gc>,
-    ) -> Self {
+    pub fn new(activation: &mut Activation<'_, 'gc, '_>, this: Object<'gc>, depth: u8) -> Self {
         Self(GcCell::allocate(
             activation.context.gc_context,
-            SuperObjectData {
-                this,
-                base_proto,
-            },
+            SuperObjectData { this, depth },
         ))
     }
 
-    /// Retrieve the prototype that `super` should be pulling from.
-    fn super_proto(self) -> Value<'gc> {
-        self.0.read().base_proto.proto()
+    fn super_proto(&self, depth: u8) -> Value<'gc> {
+        let mut proto = self.0.read().this.into();
+        for _ in 0..depth {
+            if let Value::Object(p) = proto {
+                proto = p.proto();
+            } else {
+                return Value::Undefined;
+            }
+        }
+        proto
     }
 }
 
 impl<'gc> TObject<'gc> for SuperObject<'gc> {
     fn get_local(
         &self,
-        _name: &str,
-        _activation: &mut Activation<'_, 'gc, '_>,
-        _this: Object<'gc>,
+        name: &str,
+        activation: &mut Activation<'_, 'gc, '_>,
+        this: Object<'gc>,
+        _depth: u8,
     ) -> Option<Result<Value<'gc>, Error<'gc>>> {
-        Some(Ok(Value::Undefined))
+        let depth = self.0.read().depth + 1;
+        if let Value::Object(proto) = self.super_proto(depth) {
+            proto.get_local(name, activation, this, depth)
+        } else {
+            Some(Ok(Value::Undefined))
+        }
     }
 
     fn set_local(
@@ -77,9 +81,9 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         _value: Value<'gc>,
         _activation: &mut Activation<'_, 'gc, '_>,
         _this: Object<'gc>,
-        _base_proto: Option<Object<'gc>>,
+        _depth: u8,
     ) -> Result<(), Error<'gc>> {
-        //TODO: What happens if you set `super.__proto__`?
+        // `super` ignores all sets, including `super.__proto__`.
         Ok(())
     }
 
@@ -88,34 +92,39 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         name: &str,
         activation: &mut Activation<'_, 'gc, '_>,
         _this: Object<'gc>,
-        _base_proto: Option<Object<'gc>>,
+        _depth: u8,
         args: &[Value<'gc>],
     ) -> Result<Value<'gc>, Error<'gc>> {
-        if let Value::Object(super_proto) = self.super_proto() {
-            let constructor = super_proto
-                .get("__constructor__", activation)?
-                .coerce_to_object(activation);
-            let this = self.0.read().this;
-            constructor.call(name, activation, this, Some(super_proto), args)
-        } else {
-            Ok(Value::Undefined)
+        let this = self.0.read().this;
+        let depth = self.0.read().depth;
+        let (constructor, d) =
+            search_prototype(self.super_proto(depth), "__constructor__", activation, this)?;
+
+        if constructor.is_primitive() {
+            avm_warn!(activation, "Super constructor is not callable");
         }
+
+        let depth = depth + d + 1;
+        constructor.call(name, activation, this, depth, args)
     }
 
     fn call_method(
         &self,
         name: &str,
+        _depth: u8,
         args: &[Value<'gc>],
         activation: &mut Activation<'_, 'gc, '_>,
     ) -> Result<Value<'gc>, Error<'gc>> {
         let this = self.0.read().this;
-        let (method, base_proto) = search_prototype(self.super_proto(), name, activation, this)?;
+        let depth = self.0.read().depth + 1;
+        let (method, d) = search_prototype(self.super_proto(depth), name, activation, this)?;
 
         if method.is_primitive() {
             avm_warn!(activation, "Super method {} is not callable", name);
         }
 
-        method.call(name, activation, this, base_proto, args)
+        let depth = depth + d;
+        method.call(name, activation, this, depth, args)
     }
 
     fn call_setter(
@@ -132,7 +141,9 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
         activation: &mut Activation<'_, 'gc, '_>,
         this: Object<'gc>,
     ) -> Result<Object<'gc>, Error<'gc>> {
-        if let Value::Object(proto) = self.proto() {
+        // TODO: validate.
+        let depth = self.0.read().depth;
+        if let Value::Object(proto) = self.super_proto(depth) {
             proto.create_bare_object(activation, this)
         } else {
             // TODO: What happens when you `new super` but there's no
@@ -147,14 +158,11 @@ impl<'gc> TObject<'gc> for SuperObject<'gc> {
     }
 
     fn proto(&self) -> Value<'gc> {
-        self.super_proto()
+        let depth = self.0.read().depth;
+        self.super_proto(depth + 2)
     }
 
-    fn set_proto(&self, gc_context: MutationContext<'gc, '_>, prototype: Value<'gc>) {
-        if let Value::Object(prototype) = prototype {
-            self.0.write(gc_context).base_proto = prototype;
-        }
-    }
+    fn set_proto(&self, _gc_context: MutationContext<'gc, '_>, _prototype: Value<'gc>) {}
 
     fn define_value(
         &self,

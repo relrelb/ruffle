@@ -1333,6 +1333,7 @@ impl<'gc> EditText<'gc> {
         if let Avm1Value::Object(object) = self.object() {
             let _ = object.call_method(
                 "broadcastMessage",
+                0,
                 &["onChanged".into(), object.into()],
                 activation,
             );
