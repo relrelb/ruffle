@@ -1,33 +1,7 @@
 #[macro_export]
 macro_rules! impl_custom_object {
     ($field:ident) => {
-        crate::impl_custom_object!($field { set(proto: self); });
-    };
-
-    (@extra $field:ident set(proto: self)) => {
-        fn set_local(
-            &self,
-            name: &str,
-            value: crate::avm1::Value<'gc>,
-            activation: &mut crate::avm1::Activation<'_, 'gc, '_>,
-            this: crate::avm1::Object<'gc>,
-            depth: u8,
-        ) -> Result<(), crate::avm1::Error<'gc>> {
-            self.0.read().$field.set_local(name, value, activation, this, depth)
-        }
-    };
-
-    (@extra $field:ident set(proto: $proto:ident)) => {
-        fn set_local(
-            &self,
-            name: &str,
-            value: crate::avm1::Value<'gc>,
-            activation: &mut crate::avm1::Activation<'_, 'gc, '_>,
-            this: crate::avm1::Object<'gc>,
-            depth: u8,
-        ) -> Result<(), crate::avm1::Error<'gc>> {
-            self.0.read().$field.set_local(name, value, activation, this, depth)
-        }
+        crate::impl_custom_object!($field {});
     };
 
     (@extra $field:ident bare_object($as_obj:ident -> $obj_type:ident :: $new:ident)) => {
@@ -61,6 +35,17 @@ macro_rules! impl_custom_object {
             depth: u8,
         ) -> Option<Result<crate::avm1::Value<'gc>, crate::avm1::Error<'gc>>> {
             self.0.read().$field.get_local(name, activation, this, depth)
+        }
+
+        fn set_local(
+            &self,
+            name: &str,
+            value: crate::avm1::Value<'gc>,
+            activation: &mut crate::avm1::Activation<'_, 'gc, '_>,
+            this: crate::avm1::Object<'gc>,
+            depth: u8,
+        ) -> Result<(), crate::avm1::Error<'gc>> {
+            self.0.read().$field.set_local(name, value, activation, this, depth)
         }
 
         fn call(
